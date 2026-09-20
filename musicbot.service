@@ -1,0 +1,23 @@
+[Unit]
+Description=Discord Music Bot Service for Ubuntu
+After=network.target
+
+[Service]
+Type=simple
+User=your_username
+Group=your_username
+WorkingDirectory=/path/to/DiscordMusicBot
+ExecStart=/path/to/DiscordMusicBot/venv/bin/python3 main.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+
+# Security sandboxing
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/path/to/DiscordMusicBot
+
+[Install]
+WantedBy=multi-user.target

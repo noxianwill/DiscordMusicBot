@@ -1,0 +1,152 @@
+# ============================================================
+# Discord Music Bot — Configuration
+# ============================================================
+# Copy this file to config.txt and fill in your values.
+# Lines starting with # are comments and will be ignored.
+# Environment variables override these values (use UPPERCASE key names).
+# ============================================================
+
+# ----------------------------------------------------------
+# DISCORD SETTINGS (Required)
+# ----------------------------------------------------------
+
+# Your Discord bot token from the Developer Portal
+# https://discord.com/developers/applications
+DISCORD_BOT_TOKEN=
+
+# Channel ID where bot commands are accepted (right-click channel -> Copy ID)
+# Leave empty to allow commands in all channels
+DISCORD_COMMAND_CHANNEL_ID=
+
+# Command prefix for legacy text commands (slash commands are always available)
+COMMAND_PREFIX=!
+
+# ----------------------------------------------------------
+# PLAYLIST SETTINGS (Required)
+# ----------------------------------------------------------
+
+# Absolute path to your playlists directory
+# Each subdirectory becomes a playlist, containing audio files
+# Example: /home/user/music/playlists or C:\Users\User\Music\Playlists
+PLAYLISTS_DIRECTORY=
+
+# Supported audio file formats (comma-separated, include the dot)
+SUPPORTED_FORMATS=.mp3,.flac,.ogg,.wav
+
+# ----------------------------------------------------------
+# YOUTUBE SETTINGS (Optional)
+# ----------------------------------------------------------
+# The bot can play YouTube audio using yt-dlp.
+# YouTube Data API credentials below are OPTIONAL and only needed
+# for enhanced search results and video metadata display.
+# Without these, /play <youtube url> and /play <search query> still work.
+
+# Authentication mode: oauth, token, or disabled
+YOUTUBE_AUTH_MODE=disabled
+
+# Google Cloud OAuth 2.0 credentials (from Google Cloud Console)
+# Required if YOUTUBE_AUTH_MODE=oauth
+YOUTUBE_CLIENT_ID=
+YOUTUBE_CLIENT_SECRET=
+
+# Pre-existing OAuth tokens (alternative to interactive OAuth flow)
+# Required if YOUTUBE_AUTH_MODE=token
+YOUTUBE_ACCESS_TOKEN=
+YOUTUBE_REFRESH_TOKEN=
+
+# ----------------------------------------------------------
+# BOT PRESENCE / STATUS
+# ----------------------------------------------------------
+
+# Status shown when bot is idle (not playing anything)
+IDLE_STATUS=Ready to play
+
+# Status shown during playback (supports {title}, {artist}, {playlist})
+PLAYING_STATUS=Playing: {title}
+
+# ----------------------------------------------------------
+# PLAYBACK SETTINGS
+# ----------------------------------------------------------
+
+# Default volume level (0-100)
+DEFAULT_VOLUME=75
+
+# Default loop mode: off, track, or queue
+LOOP_MODE=off
+
+# Maximum number of tracks in the queue
+MAX_QUEUE_SIZE=100
+
+# ----------------------------------------------------------
+# VOICE CHANNEL SETTINGS
+# ----------------------------------------------------------
+
+# Automatically leave voice channel when alone
+AUTO_LEAVE=true
+
+# Seconds to wait before auto-leaving (default: 300 = 5 minutes)
+AUTO_LEAVE_DELAY=300
+
+# ----------------------------------------------------------
+# PERMISSIONS
+# ----------------------------------------------------------
+
+# Name of the Discord role on your server that grants DJ permissions.
+# You can set this to ANY role name you create in Discord (e.g., DJ, Music Master, VIP).
+# The check is case-insensitive (dj, DJ, Dj all match).
+# - Standard users (without this role): Can only queue songs (/play) and check status/queues.
+# - DJ role members: Can skip, stop, pause, resume, seek, restart, volume, loop, shuffle, clear/reorder queue.
+# - Discord Administrators: Automatically bypass all role checks and have full access to all commands.
+DJ_ROLE_NAME=DJ
+
+# ----------------------------------------------------------
+# LOGGING CONFIGURATION
+# ----------------------------------------------------------
+# You can choose what to log, how verbose the output is, and where it goes.
+#
+# Available Log Levels / Presets:
+#   EVERYTHING / VERBOSE / DEBUG - Log all operations, YouTube resolution, queue changes, commands, and debug info.
+#   STANDARD / INFO              - Clean operational logs (tracks played, commands run, errors). (Recommended)
+#   QUIET / WARNING              - Only warnings and errors.
+#   ERRORS / ERROR               - Only errors and fatal exceptions.
+LOG_LEVEL=INFO
+
+# Path to the log file (directory will be created automatically)
+LOG_FILE=./logs/bot.log
+
+# Enable or disable writing logs to file (true / false)
+LOG_TO_FILE=true
+
+# Enable or disable printing logs to the terminal/console (true / false)
+LOG_TO_CONSOLE=true
+
+# Log every command execution with user name, ID, guild, and channel (true / false)
+LOG_COMMANDS=true
+
+# When LOG_LEVEL is DEBUG/EVERYTHING, include raw internal discord.py heartbeat/packet spam
+# false = keep logs focused on bot operations (Recommended)
+# true  = raw gateway protocol packets and heartbeats included
+LOG_DISCORD_INTERNALS=false
+
+# Enable verbose yt-dlp diagnostic extractor logs (true / false)
+LOG_YTDLP_VERBOSE=false
+
+# Log audio buffer statistics (prebuffer timing, underflow recovery) in debug mode (true / false)
+LOG_AUDIO_BUFFER=false
+
+# Maximum log file size before rotating (in Megabytes)
+LOG_ROTATION_MB=10
+
+# Number of rotated backup log files to retain (e.g., bot.log.1, bot.log.2)
+LOG_BACKUP_COUNT=5
+
+# ----------------------------------------------------------
+# HISTORY & STATE
+# ----------------------------------------------------------
+
+# Maximum number of tracks to keep in playback history
+MAX_HISTORY_SIZE=50
+
+# Directory for persistent data (tokens, cache, state)
+# Relative to project root or absolute path
+DATA_DIRECTORY=./data

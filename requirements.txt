@@ -1,0 +1,22 @@
+# Discord Music Bot - Dependencies
+# =================================
+
+# Discord
+discord.py[voice]>=2.4.0,<3.0.0
+PyNaCl>=1.5.0,<2.0.0
+
+# YouTube Audio Extraction
+yt-dlp>=2024.1.0
+curl_cffi>=0.7.0
+
+# Audio Metadata (local files)
+tinytag>=2.3.2,<3.0.0
+mutagen>=1.48.1,<2.0.0
+
+# Async File I/O
+aiofiles>=24.1.0,<25.0.0
+
+# Google / YouTube Data API v3 (search, metadata, playlists)
+google-api-python-client>=2.100.0,<3.0.0
+google-auth>=2.20.0,<3.0.0
+google-auth-oauthlib>=1.1.0,<2.0.0
