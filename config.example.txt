@@ -150,3 +150,16 @@ MAX_HISTORY_SIZE=50
 # Directory for persistent data (tokens, cache, state)
 # Relative to project root or absolute path
 DATA_DIRECTORY=./data
+
+# ----------------------------------------------------------
+# WEB UI (optional) — see README "Web UI"
+# ----------------------------------------------------------
+# Enable the web management interface
+PANEL_ENABLED=false
+# WebSocket URL where the bot connects to the Web UI
+# Example: wss://panel.example.com/agent
+PANEL_URL=
+# Shared secret for HMAC authentication (must match AGENT_SECRET in Web UI .env, min 32 chars)
+PANEL_SECRET=
+# Optional additional Discord user IDs with bot-wide owner privileges (comma-separated)
+PANEL_OWNER_IDS=

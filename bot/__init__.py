@@ -82,6 +82,8 @@ class MusicBot(commands.Bot):
             'bot.commands.youtube',
             'bot.commands.general',
             'bot.discord.events',
+            'bot.web.control_api',
+            'bot.web.dashboard_cmd',
         ]
 
         for ext in extensions:

@@ -1,0 +1,8 @@
+services:
+  webui:
+    build: .
+    env_file: .env
+    ports:
+      - "127.0.0.1:5000:5000"
+    restart: unless-stopped
+

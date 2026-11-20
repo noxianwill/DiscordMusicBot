@@ -1,0 +1,23 @@
+{
+  "name": "discordbot-webui",
+  "version": "1.0.0",
+  "description": "DiscordMusicBot Web UI",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "gen-secret": "node scripts/gen-secret.js",
+    "selftest": "node scripts/selftest.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^5.0.1",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^8.0.0",
+    "iron-session": "^8.0.4",
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  }
+}

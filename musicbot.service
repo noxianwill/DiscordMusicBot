@@ -7,9 +7,11 @@ Type=simple
 User=your_username
 Group=your_username
 WorkingDirectory=/path/to/DiscordMusicBot
-ExecStart=/path/to/DiscordMusicBot/venv/bin/python3 main.py
+ExecStart=/path/to/DiscordMusicBot/venv/bin/python3 launcher.py
 Restart=always
 RestartSec=5
+KillMode=mixed
+TimeoutStopSec=30
 Environment=PYTHONUNBUFFERED=1
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 

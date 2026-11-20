@@ -1,0 +1,25 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./config.txt:/app/config.txt
+      - ./cookies.txt:/app/cookies.txt
+      - ./playlists:/app/playlists
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      - web
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./web/.env:/app/.env
+      - ./playlists:/app/playlists

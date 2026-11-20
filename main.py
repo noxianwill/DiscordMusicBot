@@ -127,7 +127,7 @@ def main() -> None:
         log_discord_internals=config.log_discord_internals,
         max_bytes=config.log_rotation_mb * 1024 * 1024,
         backup_count=config.log_backup_count,
-        secrets=[config.discord_bot_token, config.youtube_client_secret]
+        secrets=[s for s in [config.discord_bot_token, config.youtube_client_secret, getattr(config, 'panel_secret', None)] if s]
     )
 
     if not shutil.which('ffmpeg'):

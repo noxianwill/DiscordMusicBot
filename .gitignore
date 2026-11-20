@@ -3,11 +3,20 @@
 # Project-specific ignores
 
 # Configuration (contains secrets)
-config.txt
-cookies.txt
+config.txt*
+cookies.txt*
 *.cookies
+*.bak
 /playlists/
 tests/
+
+# Node / Web UI
+node_modules/
+web/node_modules/
+web/.env*
+!web/.env.example
+web/docs/
+docs/
 
 # Data directories
 data/

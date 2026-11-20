@@ -45,6 +45,21 @@ class BotConfig:
     log_backup_count: int = 5
     command_prefix: str = '!'
     loop_mode: str = 'off'
+    panel_enabled: bool = False
+    panel_url: str = ''
+    panel_secret: str = ''
+    panel_owner_ids: str = ''
+
+    @property
+    def panel_owner_ids_set(self) -> Set[int]:
+        if not self.panel_owner_ids:
+            return set()
+        ids = set()
+        for s in str(self.panel_owner_ids).split(','):
+            s = s.strip()
+            if s.isdigit():
+                ids.add(int(s))
+        return ids
 
     @property
     def playlists_dir(self) -> str:
@@ -104,7 +119,7 @@ def load_config(file_path: Path | str) -> BotConfig:
         'LOG_TO_FILE', 'LOG_TO_CONSOLE', 'LOG_DISCORD_INTERNALS',
         'LOG_COMMANDS', 'LOG_YTDLP_VERBOSE', 'LOG_AUDIO_BUFFER',
         'LOG_ROTATION_MB', 'LOG_BACKUP_COUNT', 'MAX_HISTORY_SIZE',
-        'DATA_DIRECTORY'
+        'DATA_DIRECTORY', 'PANEL_ENABLED', 'PANEL_URL', 'PANEL_SECRET', 'PANEL_OWNER_IDS'
     ]
     for env_key in env_keys:
         val = os.getenv(env_key)
@@ -157,7 +172,7 @@ def load_config(file_path: Path | str) -> BotConfig:
     # Boolean fields
     for bool_key in [
         'auto_leave', 'log_to_file', 'log_to_console', 'log_discord_internals',
-        'log_commands', 'log_ytdlp_verbose', 'log_audio_buffer'
+        'log_commands', 'log_ytdlp_verbose', 'log_audio_buffer', 'panel_enabled'
     ]:
         if bool_key in config_dict:
             val = str(config_dict[bool_key]).lower()
@@ -168,7 +183,8 @@ def load_config(file_path: Path | str) -> BotConfig:
         'dj_role_name', 'idle_status', 'playing_status', 'supported_formats',
         'youtube_auth_mode', 'youtube_client_id', 'youtube_client_secret',
         'youtube_access_token', 'youtube_refresh_token',
-        'command_prefix', 'loop_mode'
+        'command_prefix', 'loop_mode',
+        'panel_url', 'panel_secret', 'panel_owner_ids'
     ]:
         if str_key in config_dict and config_dict[str_key]:
             parsed[str_key] = config_dict[str_key]

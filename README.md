@@ -1,93 +1,283 @@
-# Discord Music Bot 🎵
+# Discord Music Bot 🎵 + Web UI Dashboard
 
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/downloads/)
+[![Node.js Version](https://img.shields.io/badge/node.js-v18%20%7C%20v20%20%7C%20v22-green.svg)](https://nodejs.org/)
 [![discord.py](https://img.shields.io/badge/discord.py-v2.4+-brightgreen.svg)](https://github.com/Rapptz/discord.py)
 [![yt-dlp](https://img.shields.io/badge/yt--dlp-2024+-red.svg)](https://github.com/yt-dlp/yt-dlp)
+[![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A modern, high-performance, self-hosted Discord music bot built with **Python**, **`discord.py` 2.x**, **FFmpeg**, and **`yt-dlp`**.
+A modern, high-performance, self-hosted Discord music bot and web management dashboard built with **Python 3 (`discord.py` 2.x)**, **FFmpeg**, **`yt-dlp`**, and **Node.js (Express + WebSocket)**.
 
-Engineered specifically for bulletproof reliability on cloud servers (AWS, DigitalOcean, Hetzner, Linode) where YouTube blocks datacenter IPs. Features piped audio streaming to permanently eliminate `HTTP 403 Forbidden` errors, automated JavaScript challenge solving via Deno, browser TLS impersonation, local high-res playlists (MP3, FLAC, OGG, WAV), role-based permissions, an interactive setup wizard, and 24/7 systemd service automation.
+Engineered specifically for bulletproof 24/7 reliability on cloud servers (AWS, DigitalOcean, Hetzner, GCP, Linode, Oracle Cloud) where YouTube blocks datacenter IPs. Features **Piped Audio Streaming** to permanently eliminate `HTTP 403 Forbidden` errors, automated JavaScript challenge solving via Deno, browser TLS impersonation, local high-res playlists (MP3, FLAC, OGG, WAV), YouTube selective importer, a full in-browser cookies editor, Discord OAuth2 web panel, and 1-click Docker automation for all Linux and Windows systems.
 
 > [!NOTE]
->
-> **1. This project is tested/being tested ONLY on Ubuntu_24.04.1-x86_64**. Any tests on other Operating Systems, and feedback/bug reports are highly appreciated!
-> 
-> **2. Project Status:** Active Testing Phase (v1.0.0)
-> This bot is currently in its active development and testing phase. Because YouTube continuously rolls out new anti-bot defenses, signature rotations, and client challenge ciphers, features and workarounds are actively evolving. Some bugs are **very likely** expected in this project, so feedback and contributions are welcome!
+> **Cross-Platform Compatibility:** Tested and verified on **Ubuntu 24.04 / 22.04 LTS**, **Debian**, **Arch Linux**, **Alpine**, and **Windows 10 / 11 / Windows Server**. Native Windows and Linux launchers, as well as unified multi-container Docker Compose, are fully supported out-of-the-box!
 
 ---
 
 ## Table of Contents
 
 1. [Key Features](#key-features)
-2. [Audio Engine Architecture](#audio-engine-architecture)
-3. [System Prerequisites](#system-prerequisites)
-   - [Linux (Ubuntu, Debian, CentOS, RHEL, Fedora, Arch)](#1-linux)
-   - [macOS (Homebrew)](#2-macos)
-   - [Windows (Windows 11, 10, Windows Server)](#3-windows-windows-11-windows-10-windows-server)
-   - [Pre-Flight Verification](#4-pre-flight-verification)
-4. [Step-by-Step Discord Setup (Creating Your Bot)](#step-by-step-discord-setup)
-   - [1. Create the Application & Bot](#1-create-the-application--bot)
-   - [2. Enable Required Gateway Intents](#2-enable-required-gateway-intents)
-   - [3. Invite the Bot to Your Server](#3-invite-the-bot-to-your-discord-server)
-5. [Installation & Setup](#installation--setup)
-   - [1. Clone Repository](#1-clone-repository)
-   - [2. Virtual Environment](#2-set-up-virtual-environment)
-   - [3. Install Dependencies](#3-install-python-dependencies)
-   - [4. Configure the Bot (Wizard or Manual)](#4-configure-the-bot)
-6. [CLI Command-Line Interface (`main.py`)](#cli-command-line-interface-mainpy)
-   - [`--setup` (Interactive Setup Wizard)](#1-interactive-setup-wizard---setup)
-   - [`--check-config` (Diagnostic Health Check)](#2-diagnostic-health-check---check-config)
-   - [`--config <path>` (Custom Config File)](#3-custom-config-file-path---config)
-   - [Standard Launch](#4-standard-launch)
-7. [YouTube Audio & Anti-Bot Architecture](#youtube-audio--anti-bot-architecture)
-   - [Why Cloud Datacenter IPs Get Blocked](#why-cloud-datacenter-ips-get-blocked)
+2. [Fast Start: Choose Your Platform](#fast-start-choose-your-platform)
+3. [Discord Developer Portal Setup (Creating Your Bot & OAuth2)](#discord-developer-portal-setup)
+   - [1. Create Application & Bot Token](#1-create-application--bot-token)
+   - [2. Enable Gateway Intents](#2-enable-gateway-intents)
+   - [3. Invite the Bot to Your Server](#3-invite-the-bot-to-your-server)
+   - [4. Setup OAuth2 for the Web UI](#4-setup-oauth2-for-the-web-ui)
+4. [Installation & Deployment](#installation--deployment)
+   - [Option A: Docker Compose (Easiest & Recommended)](#option-a-docker-compose-easiest--recommended)
+   - [Option B: Windows Native Setup (1-Click or Manual)](#option-b-windows-native-setup-windows-10--11--server)
+   - [Option C: Linux Native Setup (Ubuntu, Debian, Arch, CentOS)](#option-c-linux-native-setup)
+5. [Web UI Dashboard Overview](#web-ui-dashboard-overview)
+   - [Live Playback & Interactive Seek Slider](#live-playback--interactive-seek-slider)
+   - [YouTube to Local Playlist Importer & Selective Downloader](#youtube-to-local-playlist-importer--selective-downloader)
+   - [YouTube Cookies Viewer & Clean-Export Method](#youtube-cookies-viewer--clean-export-method)
+   - [Bot Supervisor Control & Live Logs](#bot-supervisor-control--live-logs)
+   - [Web UI & Bot Settings Editor](#web-ui--bot-settings-editor)
+6. [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
+7. [Audio Engine Architecture](#audio-engine-architecture)
    - [Piped Streaming (Zero 403 Forbidden Errors)](#piped-streaming-zero-403-forbidden-errors)
    - [Multi-Client Strategy & Mobile Client Fallback](#multi-client-strategy--mobile-client-fallback)
-   - [Built-In RAM Jitter Buffer (Smooth Audio Pacing)](#built-in-ram-jitter-buffer-smooth-audio-pacing)
-   - [Exporting `cookies.txt` (Preventing Expiration)](#exporting-cookiestxt-how-to-prevent-cookies-from-expiring)
-8. [Configurable Logging System](#configurable-logging-system)
-   - [Log Levels & Presets](#log-levels--presets)
-   - [Log Output Destinations](#log-output-destinations)
-   - [Command Execution & Discord Internals](#command-execution--discord-internals)
-   - [Log Rotation & Text Cleanliness](#log-rotation--text-cleanliness)
+   - [Thread-Safe RAM Jitter Buffer](#thread-safe-ram-jitter-buffer)
+   - [Exporting `cookies.txt` (Preventing Token Expiration)](#exporting-cookiestxt-how-to-prevent-cookies-from-expiring)
+8. [Bot Discord Commands Reference](#bot-discord-commands-reference)
 9. [Complete Configuration Reference](#complete-configuration-reference)
-10. [Bot Presence / Status](#bot-presence--status)
-11. [Local Playlists Setup](#local-playlists-setup)
-12. [24/7 Production Deployment (systemd)](#247-production-deployment-systemd)
-13. [Bot In-Discord Command Reference (Line-by-Line)](#bot-in-discord-command-reference-line-by-line)
-    - [Playback Commands](#1-playback-commands)
-    - [Queue Management Commands](#2-queue-management-commands)
-    - [Local Playlist Commands](#3-local-playlist-commands)
-    - [YouTube Data API Commands](#4-youtube-data-api-commands)
-    - [General & Diagnostic Commands](#5-general--diagnostic-commands)
-14. [Roles & Permission Hierarchy](#roles--permission-hierarchy)
-    - [Understanding the 3 Permission Tiers](#understanding-the-3-permission-tiers)
-    - [Step-by-Step Server Setup Guide](#step-by-step-discord-setup-guide-for-server-owners)
-    - [Command Permission Comparison Matrix](#command-permission-comparison-matrix)
-15. [Troubleshooting & FAQ](#troubleshooting--faq)
+   - [Bot Configuration (`config.txt`)](#bot-configuration-configtxt)
+   - [Web UI Configuration (`.env`)](#web-ui-configuration-env)
+10. [Production 24/7 Hosting (Reverse Proxy & Services)](#production-247-hosting-reverse-proxy--services)
+    - [Apache 2.4 Reverse Proxy](#apache-24-reverse-proxy)
+    - [Nginx Reverse Proxy](#nginx-reverse-proxy)
+    - [Caddy Reverse Proxy](#caddy-reverse-proxy)
+    - [Linux systemd Service Configuration](#linux-systemd-service-configuration)
+11. [Troubleshooting & FAQ](#troubleshooting--faq)
+12. [Developer & Community](#developer--community)
 
 ---
 
 ## Key Features
 
 - **Piped Audio Streaming (`YTDLPPipeAudio`)**: Eliminates `HTTP error 403 Forbidden` by streaming audio data directly from `yt-dlp` into FFmpeg's `stdin`. FFmpeg makes **zero direct HTTP requests** to YouTube's CDN.
-- **Multi-Client Strategy & Mobile Fallback**: Bypasses YouTube's aggressive "Sign in to confirm you're not a bot" challenge on datacenter IPs (AWS, DigitalOcean, Hetzner, GCP) by routing playback through Android, iOS, mobile web, and desktop clients, with automated cookie-less fallback.
-- **Built-In RAM Jitter Buffer (`BufferedAudioSource`)**: Maintains a 2-second pre-buffer and 10-second memory queue, pacing 20ms audio packets to eliminate audio jitter, stuttering, and WebRTC fast-forward catchup distortion on cloud connections.
-- **Dual Command Interface**: Full support for both modern **Discord Slash Commands** (`/play`, `/skip`) and traditional **prefix text commands** (`!play`, `!skip`). The prefix is configurable via `COMMAND_PREFIX` in `config.txt`.
-- **Live Bot Presence / Status**: Displays a custom idle status when not playing (configurable via `IDLE_STATUS`), switches to "Listening to: *song title*" when playing, and reverts when playback stops. Updates in real-time on track changes with debounce protection against Discord rate limits.
-- **Configurable Multi-Option Logging**: Full user control via `config.txt` over log levels (with intuitive presets like `EVERYTHING`, `VERBOSE`, `STANDARD`, `QUIET`, `ERRORS`), file output (`logs/bot.log`), console output, command tracking, and automatic log rotation with ANSI color stripping.
-- **Deno JS Challenge Solver**: Executes YouTube's EJS signatures and n-parameter challenge solver scripts natively to bypass format restrictions (`The page needs to be reloaded`).
-- **Browser TLS Impersonation**: Uses `curl_cffi` to mimic Google Chrome's JA3/JA4 TLS handshake fingerprint and HTTP/2 frames.
-- **Interactive Setup Wizard**: Run `python3 main.py --setup` to configure tokens, channels, playlists, and settings interactively via CLI.
-- **Pre-Flight Diagnostic Tool**: Run `python3 main.py --check-config` to validate FFmpeg, playlists, cookies, and configuration before connecting to Discord.
-- **Local Audio Playlists Engine**: Scans nested directories for MP3, FLAC, OGG, and WAV files, parsing ID3 metadata, track numbers, and shuffle support automatically.
-- **Interactive UI**: Discord embeds with interactive component buttons (Play/Pause, Skip, Stop) and paginated queue navigation.
-- **Volume & Audio Control**: Real-time volume scaling (0% to 200%), timestamp seeking (`/seek`), and loop modes (`off`, `track`, `queue`).
-- **Role-Based Access Control**: 3-tier permission hierarchy (Standard User, DJ Role, Server Administrator).
-- **Auto-Leave Protection**: Disconnects from voice channels when idle or when all members leave, saving server bandwidth and memory.
-- **Race-Condition-Free Track Switching**: Uses a generation counter to ensure that skip, previous, and seek commands never cascade through the queue, even under high-latency conditions.
+- **Modern Responsive Web UI**: Discord-themed dark mode interface with sticky sidebar, real-time live playback progress, seek slider, and volume control.
+- **YouTube to Local Playlist Importer**: Paste any YouTube video or playlist link, preview every song, uncheck unwanted tracks with a one-click checklist, and download directly to high-quality local MP3 with server cookie authentication.
+- **In-Browser YouTube Cookies Editor**: Safely view, edit, paste, or upload Netscape `cookies.txt` with zero vertical/horizontal scrolling, auto-resizing canvas, and privacy masking.
+- **Discord OAuth2 Login**: Users log in securely with their Discord accounts; permissions are automatically mapped to Server Owner, Admin, DJ, and Member roles.
+- **Multi-Client Strategy & Mobile Fallback**: Bypasses YouTube's "Sign in to confirm you're not a bot" challenge on datacenter IPs by querying Android, iOS, mobile web, and desktop endpoints with automated cookie-less fallback.
+- **Built-In RAM Jitter Buffer (`BufferedAudioSource`)**: Maintains a 2-second pre-buffer and 10-second memory queue, pacing 20ms audio packets to eliminate jitter, stuttering, and fast-forward distortion.
+- **Dual Discord Interface**: Full support for both **Discord Slash Commands** (`/play`, `/skip`, `/queue`) and traditional **prefix commands** (`!play`, `!skip`).
+- **Live Discord Presence / Status**: Displays custom idle status when quiet, dynamically updates to *"Listening to: [Song Title]"* during playback, and reverts cleanly.
+- **Local Audio Playlists Engine**: Scans nested directories for MP3, FLAC, OGG, and WAV files, parsing ID3 metadata, album art, and track durations automatically.
+- **Supervisor Process Control (`launcher.py`)**: Web-based supervisor allows bot owners to start, stop, restart, view system metrics, and inspect live log streams in real-time.
+- **Cross-Platform**: Runs on Docker, Linux, macOS, and Windows 10/11 natively.
+
+---
+
+## Fast Start: Choose Your Platform
+
+| Platform / Method | Skill Level | Setup Time | Quick Launch Command |
+|---|---|---|---|
+| 🐳 **Docker Compose** | Beginner (Recommended) | 2 minutes | `docker compose up -d` |
+| 🪟 **Windows Native** | Beginner / Power User | 3 minutes | Double-click `start.bat` |
+| 🐧 **Linux Native** | Power User / VPS Admin | 3 minutes | `./start.sh` |
+| 🌐 **24/7 Linux Server** | System Administrator | 5 minutes | `systemd` (Bot) + `pm2` (Web UI) |
+
+---
+
+## Discord Developer Portal Setup
+
+Before running the application, create your bot on Discord:
+
+### 1. Create Application & Bot Token
+1. Open the [Discord Developer Portal](https://discord.com/developers/applications).
+2. Click **New Application** in the top right, name your bot (e.g. `MusicBot`), and agree to the terms.
+3. In the left sidebar, click **Bot**:
+   - Under the username, click **Reset Token** to generate your bot token.
+   - **Copy and securely store this token** (you will paste this into `config.txt` or Docker environment).
+
+### 2. Enable Gateway Intents
+Scroll down on the **Bot** page to **Privileged Gateway Intents**:
+- ✅ Enable **Message Content Intent** (Required for prefix command fallback).
+- ✅ Enable **Server Members Intent** (Required for permission hierarchy lookups).
+- Click **Save Changes**.
+
+### 3. Invite the Bot to Your Server
+1. Click **OAuth2** &rarr; **URL Generator** in the left sidebar.
+2. Under **Scopes**, select:
+   - `bot`
+   - `applications.commands`
+3. Under **Bot Permissions**, select:
+   - **Text Permissions**: *Send Messages*, *Embed Links*, *Attach Files*, *Read Message History*, *Use External Emojis*
+   - **Voice Permissions**: *Connect*, *Speak*, *Use Voice Activity*, *Priority Speaker*
+4. Copy the **Generated URL** at the bottom, paste it into your browser, choose your server, and click **Authorize**.
+
+### 4. Setup OAuth2 for the Web UI
+1. In your application, navigate to **OAuth2** &rarr; **General**.
+2. Click **Add Redirect** under **Redirects**:
+   - For local development: `http://localhost:5000/auth/discord/callback`
+   - For public domain: `https://panel.yourdomain.com/auth/discord/callback`
+3. Copy your **Client ID**.
+4. Click **Reset Secret** to generate and copy your **Client Secret** (you will paste these into the Web UI `.env`).
+
+### 5. Find Your Discord User ID (for Owner Superpowers)
+To give yourself full administrator/owner permissions in the bot and Web UI:
+1. In the Discord app, open **User Settings** (⚙️ gear icon at bottom-left).
+2. Go to **Advanced** and turn **ON** **Developer Mode**.
+3. Right-click your own avatar or username in any chat or member list, and click **Copy User ID**.
+4. Paste this number into `PANEL_OWNER_IDS` in `config.txt`.
+
+---
+
+## Installation & Deployment
+
+### Option A: Docker Compose (Easiest & Recommended)
+
+Docker containerizes both the Python audio bot and Node.js Web UI so you don't need to manually configure dependencies.
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/noxianwill/DiscordMusicBot.git
+   cd DiscordMusicBot
+   ```
+
+2. **Configure Settings**:
+   - Copy `config.example.txt` to `config.txt`:
+     ```bash
+     cp config.example.txt config.txt
+     ```
+     Open `config.txt` and paste your `BOT_TOKEN`, set `PANEL_ENABLED=true`, `PANEL_URL=ws://web:5000/agent`, and choose a shared `PANEL_SECRET`.
+   - Copy `web/.env.example` to `web/.env`:
+     ```bash
+     cp web/.env.example web/.env
+     ```
+     Paste your Discord `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and set `AGENT_SECRET` to match `PANEL_SECRET`.
+
+3. **Start the Stack**:
+   ```bash
+   docker compose up -d
+   ```
+4. Open `http://localhost:5000` (or your server IP) in your browser!
+
+---
+
+### Option B: Windows Native Setup (Windows 10 / 11 / Server)
+
+#### Prerequisites (Installed in 1 command)
+Open **PowerShell as Administrator**:
+```powershell
+winget install Python.Python.3.11 OpenJS.NodeJS.LTS Gyan.FFmpeg DenoLand.Deno Git.Git
+```
+*(Restart your terminal after installation so environment paths update).*
+
+#### Running with 1-Click Batch Script:
+1. Clone the repository or download as ZIP:
+   ```cmd
+   git clone https://github.com/noxianwill/DiscordMusicBot.git
+   cd DiscordMusicBot
+   ```
+2. Copy `config.example.txt` to `config.txt` and fill your bot token.
+3. Copy `web\.env.example` to `web\.env` and fill your Discord Client ID/Secret.
+4. Double-click **`start.bat`** in the repository root. The script automatically sets up the Python virtual environment, installs dependencies, and launches both processes!
+
+---
+
+### Option C: Linux Native Setup
+
+#### 1. System Packages (Ubuntu / Debian)
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip nodejs npm ffmpeg curl git
+# Install Deno (required for YouTube JS challenge solver)
+curl -fsSL https://deno.land/install.sh | sh
+sudo cp ~/.deno/bin/deno /usr/local/bin/
+```
+
+#### 2. Install Python Bot Dependencies
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+cp config.example.txt config.txt
+```
+
+#### 3. Install Web UI Dependencies
+```bash
+cd web
+npm install
+cp .env.example .env
+cd ..
+```
+
+#### 4. Run Both Processes
+- Terminal 1 (Bot Supervisor):
+  ```bash
+  source venv/bin/activate
+  python3 launcher.py
+  ```
+- Terminal 2 (Web UI Dashboard):
+  ```bash
+  cd web
+  npm start
+  ```
+
+---
+
+## Web UI Dashboard Overview
+
+The self-hosted dashboard connects directly to the bot with zero database overhead:
+
+```mermaid
+graph LR
+    USER["User Browser"] -- Discord OAuth2 & WebSocket --> WEBUI["Web UI Panel (Node.js)"]
+    BOT["DiscordMusicBot (Python)"] -- Outbound WebSocket (HMAC-SHA256) --> WEBUI
+    BOT -- Discord API / Voice WebRTC --> DISCORD["Discord Servers"]
+    BOT -- Piped Audio (Zero 403) --> YOUTUBE["YouTube CDN"]
+```
+
+### Live Playback & Interactive Seek Slider
+- Displays the current song thumbnail, title, artist, and requester.
+- Real-time seek progress bar with live elapsed and total duration timers.
+- Play, Pause, Skip, Previous, Volume, and Loop mode controls.
+- Voice channel status pill with one-click channel switching and Disconnect controls.
+
+### YouTube to Local Playlist Importer & Selective Downloader
+- Paste any YouTube video URL or full YouTube playlist URL.
+- Fast metadata inspection retrieves track lists without downloading raw video bytes.
+- **Interactive Track Checklist**: Select or deselect individual songs, use **Select All** / **Deselect All**, or filter tracks with real-time text search.
+- Downloads directly to the selected local playlist folder as high-quality MP3 (`-x --audio-format mp3 --audio-quality 0`) using server cookies to prevent IP blocks.
+
+### YouTube Cookies Viewer & Clean-Export Method
+- View, copy, or edit the active Netscape format `cookies.txt` directly in your browser.
+- **Dynamic Full-Height Canvas**: Expands automatically to contain all lines with zero horizontal and vertical scrollbars.
+- **Privacy Mask**: Hidden by default with a quick toggle (`👁️ Show Cookies`).
+
+### Bot Supervisor Control & Live Logs
+- Real-time status badge (`running`, `stopped`, `crashed`, `starting`).
+- Live system resource monitors (CPU usage %, RAM usage in MB, system uptime, and restart counters).
+- Start, Stop, and Restart bot processes with 1 click.
+- Real-time terminal log viewer with autoscroll and ANSI color formatting.
+
+---
+
+## Role-Based Access Control (RBAC)
+
+The Web UI dynamically checks permissions via Discord OAuth2 and the bot's live server roles:
+
+| Action / Capability | Server Owner (`owner`) | Administrator (`admin`) | DJ Role (`dj`) | Server Member (`user`) | Non-Member (`none`) |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **View Now Playing & Queue** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Request Songs (YouTube / URL)** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Interactive Seek Progress** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Play, Pause, Skip, Previous** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Change Volume & Loop Mode** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Manage & Reorder Queue** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Switch Voice Channel / Disconnect**| ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Reload Local Playlists** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Upload Audio & Import YouTube** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Manage YouTube Cookies** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Edit Bot & Server Settings** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Start / Stop / Restart Bot** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Inspect System Logs** | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -95,562 +285,176 @@ Engineered specifically for bulletproof reliability on cloud servers (AWS, Digit
 
 ```mermaid
 graph TB
-    subgraph "Discord Interface"
-        SLASH["Slash Commands (/play, /queue, /playlist)"]
-        BUTTONS["Interactive Embed Buttons"]
-        PREFIX["Legacy Prefix Commands (!play, !skip)"]
+    subgraph "Audio Pipeline"
+        YTDLP["yt-dlp (TLS Mimic + Deno Challenge Solver)"] -- Raw Decoded Audio (stdout) --> PIPE["OS Standard Pipe"]
+        PIPE -- stdin (pipe:0) --> FFMPEG["FFmpeg Audio Filter"]
+        FFMPEG -- 48kHz Stereo PCM --> JITTER["Thread-Safe RAM Jitter Buffer (2s Prebuffer / 10s Queue)"]
+        JITTER -- Fixed 20ms Frames (50 fps) --> ENCODER["PyNaCl Opus Encoder"]
+        ENCODER -- Encrypted RTP Packets --> WEBRTC["Discord Voice Gateway"]
     end
-
-    subgraph "Bot Core"
-        BOT["MusicBot Engine"]
-        CONFIG["Configuration Manager"]
-        PERMS["Role Permission Verifier"]
-    end
-
-    subgraph "Audio Pipeline (Piped Streaming)"
-        PLAYER["GuildPlayer"]
-        QUEUE["PlaybackQueue"]
-        YTDLP["yt-dlp Process (curl_cffi Chrome TLS)"]
-        DENO["Deno (JS Challenge Solver)"]
-        COOKIES["cookies.txt (Netscape Session)"]
-        FFMPEG["FFmpeg (Reads from STDIN)"]
-        VOICE["Discord Voice Channel"]
-    end
-
-    SLASH & PREFIX --> BOT
-    BUTTONS --> BOT
-    BOT --> PLAYER
-    PLAYER --> QUEUE
-    PLAYER --> YTDLP
-    YTDLP --> DENO
-    YTDLP --> COOKIES
-    YTDLP -- "Raw Audio Bytes (STDOUT)" --> FFMPEG -- "48kHz PCM" --> VOICE
 ```
-
----
-
-## System Prerequisites
-
-Before configuring or running the bot, your host machine must have **Python 3.10+**, **Git**, **FFmpeg**, and **Deno** installed.
-
-| Component | Required Version | Purpose |
-|---|---|---|
-| **Python** | `3.10` / `3.11` / `3.12` | Core runtime (with `pip` and `venv` support) |
-| **Git** | `2.x+` | Source control to clone and update the bot |
-| **FFmpeg** | `4.x` / `5.x` / `6.x` / `7.x` | Audio decoding and real-time 48kHz stereo PCM transcoding |
-| **Deno** | `1.30+` / `2.x` | JavaScript engine required by `yt-dlp` to solve YouTube's n-sig ciphers |
-| **curl & unzip** | Any | System utilities for downloading and extracting dependencies |
-
----
-
-### 1. Linux
-
-#### A. Ubuntu / Debian / Linux Mint / Pop!_OS
-```bash
-# Update package repositories
-sudo apt update
-
-# Install Python, venv, pip, git, ffmpeg, and utilities
-sudo apt install -y python3 python3-pip python3-venv git ffmpeg curl unzip
-
-# Install Deno (crucial for YouTube challenge solving)
-curl -fsSL https://deno.land/install.sh | sh
-sudo cp ~/.deno/bin/deno /usr/local/bin/
-```
-
-#### B. RHEL / CentOS Stream / AlmaLinux / Rocky Linux
-```bash
-# Enable EPEL (Extra Packages for Enterprise Linux) and RPM Fusion (for FFmpeg)
-sudo dnf install -y epel-release
-sudo dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-$(rpm -E %rhel).noarch.rpm
-
-# Install Python, pip, git, ffmpeg, and utilities
-sudo dnf install -y python3 python3-pip git ffmpeg curl unzip
-
-# Install Deno
-curl -fsSL https://deno.land/install.sh | sh
-sudo cp ~/.deno/bin/deno /usr/local/bin/
-```
-
-#### C. Fedora
-```bash
-# Enable RPM Fusion for FFmpeg
-sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
-sudo dnf install -y python3 python3-pip git ffmpeg curl unzip
-
-# Install Deno
-curl -fsSL https://deno.land/install.sh | sh
-sudo cp ~/.deno/bin/deno /usr/local/bin/
-```
-
-#### D. Arch Linux / Manjaro
-```bash
-sudo pacman -Syu --noconfirm python python-pip git ffmpeg deno curl unzip
-```
-
----
-
-### 2. macOS
-
-Using [Homebrew](https://brew.sh/) (Recommended):
-
-```bash
-# Install Homebrew (if not already installed)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Install all prerequisites in one command
-brew update && brew install python@3.12 git ffmpeg deno unzip
-```
-
----
-
-### 3. Windows (Windows 11, Windows 10, Windows Server)
-
-You can install all prerequisites using **Winget**, **Chocolatey**, or **Manual Installers**.
-
-#### Option A: Windows Package Manager (`winget`) — Recommended for Windows 10/11
-Open **PowerShell** (Run as Administrator) and run:
-```powershell
-winget install Python.Python.3.12 Git.Git Gyan.FFmpeg DenoLand.Deno
-```
-> [!IMPORTANT]
-> After running `winget`, close and reopen your PowerShell or Terminal window so your environment `$PATH` updates.
-
-#### Option B: Chocolatey — Recommended for Windows Server (2019, 2022, 2025)
-Open an administrative PowerShell prompt:
-```powershell
-choco install python3 git ffmpeg deno -y
-```
-
-#### Option C: Manual Installation
-1. **Python 3.12**: Download the Windows installer from [python.org](https://www.python.org/downloads/).  
-   > ⚠️ **CRUCIAL**: On the first installer screen, **CHECK the box** that says **"Add python.exe to PATH"** before clicking Install.
-2. **Git for Windows**: Download and run the installer from [git-scm.com](https://git-scm.com/download/win). Keep default options.
-3. **FFmpeg**: Download the release build from [gyan.dev/ffmpeg/builds](https://www.gyan.dev/ffmpeg/builds/) (`ffmpeg-release-essentials.zip`), extract it to `C:\ffmpeg`, and add `C:\ffmpeg\bin` to your System Environment Variables `PATH`.
-4. **Deno**: Open PowerShell and run:
-   ```powershell
-   irm https://deno.land/install.ps1 | iex
-   ```
-
----
-
-### 4. Pre-Flight Verification
-
-Before cloning or configuring the bot, verify that all four essential tools are accessible in your terminal:
-
-**Linux / macOS:**
-```bash
-python3 --version   # Should output Python 3.10.x, 3.11.x, or 3.12.x
-git --version       # Should output git version 2.x+
-ffmpeg -version     # Should show FFmpeg build banner
-deno --version      # Should show Deno version banner
-```
-
-**Windows (PowerShell):**
-```powershell
-python --version    # Should output Python 3.10.x, 3.11.x, or 3.12.x
-git --version       # Should output git version 2.x+
-ffmpeg -version     # Should show FFmpeg build banner
-deno --version      # Should show Deno version banner
-```
-
----
-
-## Step-by-Step Discord Setup
-
-Before running the code, register your bot application with Discord:
-
-### 1. Create the Application & Bot
-1. Open the [Discord Developer Portal](https://discord.com/developers/applications).
-2. Click **New Application** in the top right, name your bot (e.g. `MyMusicBot`), and accept the Developer Terms.
-3. In the left navigation menu, click **Bot**:
-   - Under the username, click **Reset Token** to generate a bot token.
-   - **Copy and securely save this token.** (You will paste this into `config.txt` or enter it in the setup wizard).
-
-### 2. Enable Required Gateway Intents
-Scroll down on the **Bot** page to **Privileged Gateway Intents**:
-- Enable **Message Content Intent** (Required for prefix command fallback).
-- Enable **Server Members Intent** (Recommended for permission lookups).
-- Ensure **Voice States Intent** is enabled (Required to track voice channel activity).
-- Click **Save Changes**.
-
-### 3. Invite the Bot to Your Discord Server
-1. In the left navigation menu, click **OAuth2** -> **URL Generator**.
-2. Under **Scopes**, check:
-   - `bot`
-   - `applications.commands` (Enables slash commands)
-3. Under **Bot Permissions**, select:
-   - **Text Permissions**: *Send Messages*, *Embed Links*, *Attach Files*, *Read Message History*, *Use External Emojis*
-   - **Voice Permissions**: *Connect*, *Speak*, *Use Voice Activity*, *Priority Speaker*
-4. Copy the **Generated URL** at the bottom, paste it into your browser, choose your Discord server, and click **Authorize**.
-
----
-
-## Installation & Setup
-
-### 1. Clone Repository
-```bash
-git clone https://github.com/noxianwill/DiscordMusicBot.git
-cd DiscordMusicBot
-```
-
-### 2. Set Up Virtual Environment
-Using a virtual environment isolates your project packages:
-
-- **Linux / macOS**:
-  ```bash
-  python3 -m venv venv
-  source venv/bin/activate
-  ```
-- **Windows (PowerShell)**:
-  ```powershell
-  python -m venv venv
-  .\venv\Scripts\Activate.ps1
-  ```
-  *(If PowerShell shows a script execution error, run: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`)*
-
-### 3. Install Python Dependencies
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-### 4. Configure the Bot
-
-You have two options to configure your bot:
-
-#### Option A: Interactive CLI Setup Wizard (Recommended)
-Run the built-in wizard:
-```bash
-python3 main.py --setup
-```
-The wizard will prompt you step-by-step for your Bot Token, Command Channel ID, Playlists Directory, and YouTube API credentials, automatically writing a clean `config.txt` file.
-
-#### Option B: Manual Configuration File
-1. Copy the example configuration file:
-   ```bash
-   cp config.example.txt config.txt
-   ```
-2. Open `config.txt` in your favorite editor. See `config.example.txt` for the full annotated template with all available settings. Key settings:
-   ```ini
-   # Required: Discord Bot Token from Developer Portal
-   DISCORD_BOT_TOKEN=your_bot_token_here
-
-   # Optional: Restrict commands to a specific channel ID (leave empty for all channels)
-   DISCORD_COMMAND_CHANNEL_ID=
-
-   # Command prefix for text commands (slash commands always work)
-   COMMAND_PREFIX=!
-
-   # Path to folder containing local music playlists
-   PLAYLISTS_DIRECTORY=./playlists
-   SUPPORTED_FORMATS=.mp3,.flac,.ogg,.wav
-
-   # YouTube Data API v3 integration mode (oauth, token, or disabled)
-   YOUTUBE_AUTH_MODE=disabled
-   YOUTUBE_CLIENT_ID=
-   YOUTUBE_CLIENT_SECRET=
-
-   # Bot presence / status
-   IDLE_STATUS=Ready to play
-   PLAYING_STATUS=Playing: {title}
-
-   # Playback defaults
-   DEFAULT_VOLUME=75
-   LOOP_MODE=off
-   MAX_QUEUE_SIZE=100
-
-   # Voice channel behavior
-   AUTO_LEAVE=true
-   AUTO_LEAVE_DELAY=300
-
-   # Permissions: Name of the Discord role that grants DJ playback controls
-   # You can set this to ANY role name created on your server (e.g. DJ, Music Master, VIP)
-   # Case-insensitive. Users without this role can only queue songs. Admins bypass automatically.
-   DJ_ROLE_NAME=DJ
-
-   # Logging
-   LOG_LEVEL=INFO
-   LOG_FILE=./logs/bot.log
-   LOG_TO_FILE=true
-   LOG_TO_CONSOLE=true
-   LOG_COMMANDS=true
-   LOG_DISCORD_INTERNALS=false
-   LOG_YTDLP_VERBOSE=false
-   LOG_AUDIO_BUFFER=false
-   LOG_ROTATION_MB=10
-   LOG_BACKUP_COUNT=5
-
-   # History & state
-   MAX_HISTORY_SIZE=50
-   DATA_DIRECTORY=./data
-   ```
-
----
-
-## CLI Command-Line Interface (`main.py`)
-
-The bot entrypoint `main.py` provides several powerful command-line flags:
-
-### 1. Interactive Setup Wizard (`--setup`)
-```bash
-python3 main.py --setup
-```
-- **What it does**: Launches an interactive, terminal-based setup wizard (`bot/setup_wizard.py`).
-- **Interactive Prompts**:
-  1. `Enter Discord Bot Token`: Secure password input (hidden from screen) to paste your token.
-  2. `Enter Command Channel ID`: Optional channel ID to restrict bot commands.
-  3. `Enter Playlists Directory path`: Directory for local audio files (automatically verifies and creates the directory if missing).
-  4. `Enable YouTube Auth?`: Configure YouTube Data API v3 mode (`disabled`, `oauth`, or `token`).
-  5. If `oauth` is selected: prompts for `YouTube Client ID` and `YouTube Client Secret`.
-- **Output**: Generates or updates `config.txt` and verifies directory structures.
-
-### 2. Diagnostic Health Check (`--check-config`)
-```bash
-python3 main.py --check-config
-```
-- **What it does**: Performs a complete pre-flight diagnostic check of your environment without connecting to Discord.
-- **Validations performed**:
-  - Validates `config.txt` syntax, required keys, and data types.
-  - Checks if `ffmpeg` binary is reachable in the system `$PATH`.
-  - Checks if `PLAYLISTS_DIRECTORY` exists and reports the total count of valid playlist subfolders detected.
-  - Validates `YOUTUBE_AUTH_MODE` and reports whether the bot will operate in `API` mode or `yt-dlp stream only` mode.
-  - Confirms log level and data directory.
-- **Exit Code**: Returns `0` if all checks pass, or `1` if any critical configuration is missing or broken.
-
-### 3. Custom Config File Path (`--config`)
-```bash
-python3 main.py --config /path/to/custom_config.txt
-```
-- **What it does**: Directs the bot to load settings from an alternative configuration file instead of the default `./config.txt`. Useful for running staging/production instances on the same host.
-- Can be combined with `--check-config` or `--setup`:
-  ```bash
-  python3 main.py --config prod.txt --check-config
-  python3 main.py --config staging.txt --setup
-  ```
-
-### 4. Standard Launch
-```bash
-python3 main.py
-```
-- **What it does**:
-  1. Automatically runs startup diagnostics and prints a summary banner.
-  2. Initializes rotating file logging in `data/logs/` with sensitive token masking.
-  3. Registers graceful shutdown handlers (`SIGINT`, `SIGTERM`).
-  4. Initializes the Discord client, syncs global slash commands with Discord, and begins listening.
-
----
-
-## YouTube Audio & Anti-Bot Architecture
-
-### Why Cloud Datacenter IPs Get Blocked
-When self-hosting a Discord bot on cloud VPS providers (AWS, DigitalOcean, Hetzner, Linode, GCP, OVH), YouTube detects connections originating from hosting datacenter IP subnets and applies strict automated defenses:
-1. **HTTP 403 Forbidden (Access Denied)**: When traditional music bots pass stream URLs directly to FFmpeg, YouTube blocks FFmpeg's user-agent.
-2. **"Sign in to confirm you're not a bot"**: When querying the standard desktop web player API without valid authentication, YouTube triggers bot verification challenges.
-3. **Audio Jitter & Fast-Forwarding**: Network latency jitter and intermittent DASH fragment pauses can cause Discord's WebRTC audio player to fall behind real-time and suddenly fast-forward to catch up.
-
----
 
 ### Piped Streaming (Zero 403 Forbidden Errors)
-Traditional Discord music bots extract a temporary `googlevideo.com` CDN URL and pass it to FFmpeg. Because FFmpeg connects using its internal `Lavf` user-agent without browser TLS signatures or session headers, YouTube immediately terminates the stream with `HTTP error 403 Forbidden`.
+Traditional Discord bots pass raw CDN stream URLs directly from `yt-dlp` to FFmpeg. When running on cloud datacenter IPs (AWS, DigitalOcean, Hetzner, GCP), YouTube's CDN inspects incoming FFmpeg connections, detects the datacenter IP without browser TLS fingerprints, and returns `HTTP 403 Forbidden`.
 
-This bot eliminates 403 errors entirely through **Piped Streaming (`YTDLPPipeAudio`)**:
-1. `yt-dlp` initiates the audio stream using browser TLS impersonation (`curl_cffi`), Deno JavaScript challenge solving, and session cookies.
-2. `yt-dlp` streams raw decoded audio data directly to standard output (`stdout`).
-3. FFmpeg reads audio data directly from standard input (`stdin` / `pipe:0`).
-4. **FFmpeg never makes direct network requests to YouTube**, permanently bypassing CDN IP blocks.
-
----
+This bot solves this by streaming raw audio data directly from `yt-dlp`'s standard output (`stdout`) into FFmpeg's standard input (`stdin`). **FFmpeg never makes direct HTTP requests to YouTube**, permanently eliminating CDN 403 errors.
 
 ### Multi-Client Strategy & Mobile Client Fallback
-To defeat the `"Sign in to confirm you're not a bot"` challenge on cloud servers:
-- **Mobile Client Endpoints**: The bot configures `yt-dlp` to query across multiple YouTube client targets (`android`, `ios`, `mweb`, `web`). YouTube's mobile clients utilize different authentication standards that are far less prone to datacenter IP blocks.
-- **Automated Cookie Fallback**: If browser session cookies expire or are temporarily flagged by YouTube, the bot automatically retries extraction without cookies using mobile client endpoints, allowing playback to continue uninterrupted.
+- **Mobile Client Endpoints**: The bot queries YouTube via multiple client targets (`android`, `ios`, `mweb`, `web`). Mobile clients use distinct authentication flows that are far less prone to cloud IP blocks.
+- **Automated Fallback**: If cookies expire, extraction automatically retries without cookies using mobile client endpoints.
 
----
-
-### Built-In RAM Jitter Buffer (Smooth Audio Pacing)
-Cloud VPS connections can experience minor latency fluctuations and intermittent delivery pauses while fetching DASH audio fragments from YouTube. In standard bots, these pauses cause Discord's internal audio clock to drift, resulting in sudden bursts of fast-forward audio ("chipmunk effect") when the connection resumes.
-
-This bot features a custom **Thread-Safe RAM Jitter Buffer (`BufferedAudioSource`)**:
-- Pre-buffers **2 seconds** of decoded 48kHz stereo PCM audio into memory before audio delivery begins.
-- Maintains up to **10 seconds** of decoded audio in RAM (~1.9 MB), absorbing network spikes and fragment download delays.
-- Delivers audio frames at a rock-solid **50 frames per second (20ms intervals)**, ensuring consistent, jitter-free playback speed.
-- Underflow safety: If network latency momentarily exhausts the buffer, the engine smoothly injects silence frames to preserve Discord's WebRTC audio clock alignment.
+### Thread-Safe RAM Jitter Buffer
+Cloud VPS connections can experience brief latency spikes when fetching DASH audio fragments from YouTube. This causes Discord's WebRTC audio clock to drift, resulting in stuttering and fast-forward distortion.
+- Maintains a **2-second pre-buffer** and **10-second memory queue** (~1.9 MB).
+- Delivers audio frames at a solid **50 frames per second (20ms intervals)**.
+- Injects smooth silence frames during network drops to preserve audio clock alignment.
 
 ---
 
 ### Exporting `cookies.txt` (How to Prevent Cookies from Expiring)
 
-Supplying your browser session cookies authenticates your bot as a regular user and allows it to access high-quality audio formats and age-restricted tracks.
-
 > [!CAUTION]
 > **CRITICAL: Always Use a Disposable / Burner Google Account!**  
-> **NEVER** use your primary personal Google or YouTube account when exporting `cookies.txt`.  
-> If YouTube's automated abuse detection flags high-frequency automated audio requests from a cloud datacenter IP (AWS, DigitalOcean, Hetzner, etc.), the account linked to those session cookies may face restrictions or termination. Always create a free secondary/burner Google account solely for your bot.
-
-#### Why Normal Exports Expire Quickly
-YouTube's desktop website runs continuous client-side single-page-app (SPA) JavaScript that rotates and invalidates session tokens (such as `SAPISID`, `__Secure-3PSID`, and `LOGIN_INFO`) as you navigate between pages or when tabs close. If you export cookies from an active browsing session, the tokens may already be invalidated by the time your bot uses them.
+> **NEVER** use your primary personal Google or YouTube account when exporting `cookies.txt`. If YouTube flags automated requests from a cloud datacenter IP, the linked account may face restrictions. Always create a free secondary/burner account solely for your bot.
 
 #### The `robots.txt` Clean-Export Method (Recommended by `yt-dlp`)
-To obtain clean, stable session cookies that do not immediately invalidate:
+YouTube's SPA desktop website runs continuous client-side JavaScript that invalidates session tokens (`SAPISID`, `__Secure-3PSID`, `LOGIN_INFO`) as you browse. To export clean, stable session cookies:
 
-1. **Open a New Incognito / Private Window**:
-   - Open a fresh Private/Incognito browser window in Chrome, Firefox, or Brave.
-2. **Sign into Your Burner Account**:
-   - Navigate to [YouTube](https://www.youtube.com) and sign into your **secondary burner account**.
-3. **Navigate to `robots.txt` in the Same Tab**:
-   - In that **exact same browser tab**, navigate directly to:
-     ```text
-     https://www.youtube.com/robots.txt
-     ```
-   - **Why this works**: `robots.txt` is a static plain text file. Because YouTube's background JavaScript engines and telemetry trackers do not load on this page, YouTube cannot rotate or invalidate your session tokens.
-4. **Export in Netscape Format**:
-   - Open your cookie exporter extension (such as **Get cookies.txt LOCALLY**).
-   - Click **Export** to save the file as `cookies.txt` in **Netscape** format.
-5. **Close the Incognito Window Immediately**:
-   - Close the entire private browsing session right away without browsing any other YouTube pages.
-6. **Place `cookies.txt` in Your Bot Directory**:
-   - Place the file in the bot's root folder:
-     ```text
-     DiscordMusicBot/cookies.txt
-     ```
-     *(Alternatively, inside `data/cookies.txt`)*.
-   - Run `python3 main.py --check-config` to verify the bot detects `Cookies: OK (cookies.txt found)`.
-   - *(Note: `cookies.txt` is already included in `.gitignore` so your credentials are never pushed to git repositories).*
+1. **Open a New Incognito / Private Window** in Chrome, Firefox, or Brave.
+2. **Sign into YouTube** with your **burner account**.
+3. **Navigate directly to `robots.txt` in that exact same tab**:
+   ```text
+   https://www.youtube.com/robots.txt
+   ```
+   *(Why this works: `robots.txt` is a static plain-text page. No tracking scripts or token-rotation engines load, preserving clean tokens).*
+4. **Export in Netscape Format**: Open your exporter extension (e.g., [Get cookies.txt LOCALLY for Chrome](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) or [Firefox](https://addons.mozilla.org/firefox/addon/get-cookies-txt-locally/)) and click **Export**.
+5. **Close the Incognito Window Immediately** without clicking "Log Out".
+6. **Save into the Bot**: Paste or load the file directly into the Web UI's **YouTube Cookies** editor and click **Save Cookies**, or place it at `DiscordMusicBot/cookies.txt`.
 
 ---
 
-## Configurable Logging System
+## Bot Discord Commands Reference
 
-The bot includes a production-grade, configurable logging subsystem that can be customized in `config.txt` without editing any code.
-
-### Log Levels & Presets
-
-Set `LOG_LEVEL` in `config.txt` using any standard Python level or intuitive preset:
-
-| Level / Preset | Description | When to Use |
-|---|---|---|
-| `EVERYTHING` / `VERBOSE` / `DEBUG` | Logs all operations, YouTube resolution, queue changes, commands, and debug info. | Troubleshooting playback, YouTube queries, or server issues. |
-| `STANDARD` / `INFO` *(Default)* | Clean operational logs (tracks played, commands run, errors, server joins). | Everyday normal operation (Recommended). |
-| `QUIET` / `WARNING` | Only warnings and errors. | Low-noise environments. |
-| `ERRORS` / `ERROR` | Only error events and fatal exceptions. | Maximum silence. |
-
-### Log Output Destinations
-- **File Logging (`LOG_TO_FILE=true`)**: Writes structured logs to the path specified by `LOG_FILE` (default: `./logs/bot.log`). Directories are created automatically.
-- **Console Logging (`LOG_TO_CONSOLE=true`)**: Prints colored logs to terminal `stdout` for live monitoring.
-
-### Command Execution & Discord Internals
-- **Command Tracking (`LOG_COMMANDS=true`)**: Logs every slash command and prefix command executed, including username, user ID, server name, and channel name.
-- **Discord Internals (`LOG_DISCORD_INTERNALS=false`)**: When running in `DEBUG`/`VERBOSE` mode, internal Discord gateway WebSocket heartbeats are suppressed to keep logs readable. Set to `true` if you need raw protocol debug frames.
-
-### Log Rotation & Text Cleanliness
-- **Automatic Rotation (`LOG_ROTATION_MB=10`)**: Automatically rotates log files when they reach the specified megabyte limit.
-- **Backup Retention (`LOG_BACKUP_COUNT=5`)**: Retains historical rotated logs (`bot.log.1`, `bot.log.2`, etc.).
-- **ANSI Color Stripping**: Automatically removes terminal ANSI escape color codes from log files so they remain clean and readable in standard text editors (Notepad, nano, vim, VS Code).
-- **Server Name Formatting**: Server names and IDs are formatted cleanly in logs (e.g. `'My Server' (ID: 123456789012345678)`).
+| Slash Command | Text Prefix Command | Description | Permission Tier |
+|---|---|---|---|
+| `/play <query>` | `!play <query>` | Play audio from YouTube URL, search query, or local track | User |
+| `/pause` | `!pause` | Pause currently playing track | DJ / Admin |
+| `/resume` | `!resume` (`!unpause`) | Resume paused playback | DJ / Admin |
+| `/skip` | `!skip` (`!s`) | Skip to the next track in queue | DJ / Admin |
+| `/previous` | `!prev` (`!back`) | Play the previously played track | DJ / Admin |
+| `/stop` | `!stop` | Stop playback and clear upcoming queue | DJ / Admin |
+| `/seek <timestamp>` | `!seek <timestamp>` | Seek to timestamp (e.g. `1:30` or `90`) | DJ / Admin |
+| `/volume <0-200>` | `!volume <0-200>` (`!vol`) | Adjust playback volume level | DJ / Admin |
+| `/loop <off\|track\|queue>`| `!loop <mode>` | Set playback loop mode | DJ / Admin |
+| `/queue display` | `!queue` (`!q`) | Display interactive paginated queue | User |
+| `/queue shuffle` | `!shuffle` | Randomize order of upcoming tracks | DJ / Admin |
+| `/queue remove <index>`| `!remove <index>` | Remove a specific track from queue | DJ / Admin |
+| `/queue move <from> <to>`| `!move <from> <to>` | Move track position in queue | DJ / Admin |
+| `/queue clear` | `!clear` | Clear all upcoming tracks from queue | DJ / Admin |
+| `/playlist play <name>` | `!playlist play <name>` | Queue an entire local playlist folder | User |
+| `/playlist list` | `!playlist list` | List all available local playlists on disk | User |
+| `/playlist reload` | `!playlist reload` | Rescan local playlist folders from disk | Admin |
+| `/leave` | `!leave` (`!disconnect`) | Disconnect bot from voice channel | DJ / Admin |
+| `/dashboard` | `!dashboard` | Send direct link to the Web UI dashboard | User |
 
 ---
 
 ## Complete Configuration Reference
 
-All settings are configured in `config.txt`. Environment variables (UPPERCASE) override file values. See `config.example.txt` for the full annotated template.
+### Bot Configuration (`config.txt`)
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| **Discord** | | |
-| `DISCORD_BOT_TOKEN` | *(required)* | Bot token from Discord Developer Portal |
-| `DISCORD_COMMAND_CHANNEL_ID` | *(empty = all)* | Restrict commands to a specific channel ID |
-| `COMMAND_PREFIX` | `!` | Prefix for text commands (`!play`, `!skip`, etc.) |
-| **Playlists** | | |
-| `PLAYLISTS_DIRECTORY` | `./playlists` | Path to local playlist folders |
-| `SUPPORTED_FORMATS` | `.mp3,.flac,.ogg,.wav` | Audio file extensions to recognize |
-| **YouTube** | | |
-| `YOUTUBE_AUTH_MODE` | `disabled` | `oauth`, `token`, or `disabled` |
-| `YOUTUBE_CLIENT_ID` | *(empty)* | Google Cloud OAuth Client ID |
-| `YOUTUBE_CLIENT_SECRET` | *(empty)* | Google Cloud OAuth Client Secret |
-| `YOUTUBE_ACCESS_TOKEN` | *(empty)* | Pre-existing access token (if `token` mode) |
-| `YOUTUBE_REFRESH_TOKEN` | *(empty)* | Pre-existing refresh token (if `token` mode) |
-| **Bot Presence** | | |
-| `IDLE_STATUS` | `Ready to play` | Custom status when not playing |
-| `PLAYING_STATUS` | `Playing: {title}` | Status template when playing. Placeholders: `{title}`, `{artist}`, `{playlist}` |
-| **Playback** | | |
-| `DEFAULT_VOLUME` | `75` | Default volume (0–200) |
-| `LOOP_MODE` | `off` | Default loop: `off`, `track`, or `queue` |
-| `MAX_QUEUE_SIZE` | `100` | Maximum tracks in queue |
-| **Voice Channel** | | |
-| `AUTO_LEAVE` | `true` | Auto-leave when voice channel is empty |
-| `AUTO_LEAVE_DELAY` | `300` | Seconds before auto-leaving (300 = 5 min) |
-| **Permissions** | | |
-| `DJ_ROLE_NAME` | `DJ` | Name of the Discord role on your server that grants DJ playback permissions (case-insensitive, e.g. `DJ`, `Music Master`, `VIP`). Discord Administrators automatically bypass all restrictions. |
-| **Logging** | | |
-| `LOG_LEVEL` | `INFO` | `EVERYTHING`/`VERBOSE`/`DEBUG`, `STANDARD`/`INFO`, `QUIET`/`WARNING`, `ERRORS`/`ERROR` |
-| `LOG_FILE` | `./logs/bot.log` | Log file path |
-| `LOG_TO_FILE` | `true` | Write logs to file |
-| `LOG_TO_CONSOLE` | `true` | Print logs to terminal |
-| `LOG_COMMANDS` | `true` | Log every command with user/guild info |
-| `LOG_DISCORD_INTERNALS` | `false` | Include raw discord.py gateway frames |
-| `LOG_YTDLP_VERBOSE` | `false` | Verbose yt-dlp extractor diagnostics |
-| `LOG_AUDIO_BUFFER` | `false` | Log audio buffer statistics |
-| `LOG_ROTATION_MB` | `10` | Max log file size (MB) before rotating |
-| `LOG_BACKUP_COUNT` | `5` | Number of rotated backup files to keep |
-| **History & State** | | |
-| `MAX_HISTORY_SIZE` | `50` | Tracks to keep in playback history |
-| `DATA_DIRECTORY` | `./data` | Persistent data directory (tokens, cache) |
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `BOT_TOKEN` | String | *Required* | Discord Bot Authentication Token |
+| `COMMAND_PREFIX` | String | `!` | Prefix for legacy text commands |
+| `DEFAULT_VOLUME` | Integer | `75` | Default playback volume percentage (0–200) |
+| `AUTO_LEAVE_DURATION` | Integer | `300` | Seconds to wait before auto-leaving an empty voice channel |
+| `PLAYLISTS_DIR` | String | `playlists` | Path to local playlist folders directory |
+| `DJ_ROLE_NAME` | String | `DJ` | Discord role name required for DJ permissions |
+| `YOUTUBE_AUTH_MODE` | String | `disabled` | `disabled` (cookies.txt) or `oauth` (Google Cloud) |
+| `PANEL_ENABLED` | Boolean | `false` | Enable WebSocket connection to the Web UI |
+| `PANEL_URL` | String | `""` | WebSocket endpoint (`wss://panel.example.com/agent`) |
+| `PANEL_SECRET` | String | `""` | Shared HMAC secret (must match `AGENT_SECRET` in `.env`) |
+| `PANEL_OWNER_IDS` | String | `""` | Comma-separated Discord User IDs granted Owner permissions |
+
+### Web UI Configuration (`web/.env`)
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `PORT` | Integer | `5000` | Local port the Web UI server listens on |
+| `HOST` | String | `127.0.0.1` | Local IP bind address (`0.0.0.0` for Docker) |
+| `PUBLIC_URL` | String | `http://localhost:5000` | Canonical public URL used for OAuth2 callbacks |
+| `DISCORD_CLIENT_ID` | String | *Required* | Discord Application Client ID |
+| `DISCORD_CLIENT_SECRET` | String | *Required* | Discord Application Client Secret |
+| `AGENT_SECRET` | String | *Required* | Shared HMAC secret (must match `PANEL_SECRET`) |
+| `SESSION_PASSWORD` | String | *Required* | 32+ character random secret for iron-session encryption |
+| `ALLOWED_USER_IDS` | String | `""` | Optional whitelist of Discord user IDs allowed to log in |
 
 ---
 
-## Bot Presence / Status
+## Production 24/7 Hosting (Reverse Proxy & Services)
 
-The bot dynamically updates its Discord presence based on playback state:
+When hosting publicly, run the Web UI behind a TLS reverse proxy:
 
-| State | Discord Shows | Configurable Via |
-|-------|--------------|-----------------|
-| **Idle** (not playing) | Custom status: *"Ready to play"* | `IDLE_STATUS` |
-| **Playing** a track | 🎧 Listening to *"Playing: Song Title"* | `PLAYING_STATUS` (supports `{title}`, `{artist}`, `{playlist}`) |
-| **Paused** | 🟡 Idle — Listening to *"Paused"* | — |
-| **Stopped / Queue ends / Disconnects** | Reverts to idle status | — |
+### Apache 2.4 Reverse Proxy
+```apache
+<VirtualHost *:443>
+    ServerName panel.yourdomain.com
 
-The presence updates in real-time when tracks change, with built-in debounce protection (5s minimum interval) to avoid Discord API rate limits during rapid skipping.
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/panel.yourdomain.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/panel.yourdomain.com/privkey.pem
 
----
+    ProxyPreserveHost On
+    ProxyRequests Off
+    ProxyTimeout 600
+    LimitRequestBody 104857600
+    RequestHeader set X-Forwarded-Proto "https"
 
-## Local Playlists Setup
+    RewriteEngine On
+    RewriteCond %{HTTP:Upgrade} =websocket [NC]
+    RewriteRule /(.*) ws://127.0.0.1:5000/$1 [P,L]
 
-You can play your own local music collection stored on the host machine. Organize your audio files inside folders within the directory specified by `PLAYLISTS_DIRECTORY`:
-
-```text
-playlists/
-├── Chillstep/
-│   ├── 01 - Cloudwalk.mp3
-│   ├── 02 - Horizon.flac
-│   └── 03 - Nightfall.mp3
-├── Rock Classics/
-│   ├── Bohemian Rhapsody.mp3
-│   └── Hotel California.mp3
-└── Synthwave/
-    ├── Resonance.ogg
-    └── Sunset.wav
+    ProxyPass / http://127.0.0.1:5000/
+    ProxyPassReverse / http://127.0.0.1:5000/
+</VirtualHost>
 ```
 
-- Each directory is automatically indexed as a separate playlist.
-- Tracks are automatically ordered by ID3 track number metadata, falling back to alphabetical filename order.
-- Supported formats: `.mp3`, `.flac`, `.ogg`, `.wav`.
-- Run `/playlist reload` to rescan the directory after adding new files without restarting the bot.
+### Nginx Reverse Proxy
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name panel.yourdomain.com;
 
----
+    ssl_certificate /etc/letsencrypt/live/panel.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/panel.yourdomain.com/privkey.pem;
 
-## 24/7 Production Deployment (systemd)
+    client_max_body_size 100M;
 
-On Linux servers, use `systemd` to keep the bot running 24/7, restart it automatically on failure, and launch it upon system reboot.
-
-### 1. Create the Service Unit File
-```bash
-sudo nano /etc/systemd/system/musicbot.service
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 600s;
+    }
+}
 ```
 
-Paste the following template (replace `/path/to/DiscordMusicBot` and `your_username` with your actual system details):
+### Caddy Reverse Proxy
+```caddy
+panel.yourdomain.com {
+    request_body {
+        max_size 100MB
+    }
+    reverse_proxy 127.0.0.1:5000
+}
+```
 
+### Linux systemd Service Configuration
+Create `/etc/systemd/system/musicbot.service`:
 ```ini
 [Unit]
 Description=Discord Music Bot Service
@@ -659,376 +463,32 @@ After=network.target
 [Service]
 Type=simple
 User=your_username
-Group=your_username
 WorkingDirectory=/path/to/DiscordMusicBot
-ExecStart=/path/to/DiscordMusicBot/venv/bin/python3 main.py
+ExecStart=/path/to/DiscordMusicBot/venv/bin/python3 launcher.py
 Restart=always
 RestartSec=5
-Environment=PYTHONUNBUFFERED=1
-Environment=PATH=/usr/local/bin:/usr/bin:/bin
-
-# Security sandboxing
-NoNewPrivileges=true
-ProtectSystem=full
-ProtectHome=read-only
-ReadWritePaths=/path/to/DiscordMusicBot
+KillMode=mixed
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target
 ```
-
-### 2. Enable & Start the Service
+Enable and start with:
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable musicbot
-sudo systemctl start musicbot
+sudo systemctl enable --now musicbot
 ```
-
-### 3. Service Commands Cheat Sheet
-
-| Task | Command |
-|---|---|
-| Check status | `sudo systemctl status musicbot` |
-| Follow live logs | `journalctl -u musicbot -f` |
-| Restart bot | `sudo systemctl restart musicbot` |
-| Stop bot | `sudo systemctl stop musicbot` |
-| View last 100 log lines | `journalctl -u musicbot -n 100 --no-pager` |
-
----
-
-## Bot In-Discord Command Reference (Line-by-Line)
-
-All commands work as both **Discord Slash Commands** (`/play`) and **prefix text commands** (`!play`). The prefix is configurable via `COMMAND_PREFIX` in `config.txt` (default: `!`). Prefix aliases are shown in parentheses below.
-
-### 1. Playback Commands
-
-#### `/play <query>` · `!play <query>` · `!p <query>`
-- **Description**: Plays audio from a YouTube link, YouTube search query, or local audio file path.
-- **Parameters**:
-  - `query` *(String, Required)*: The YouTube URL (e.g. `https://www.youtube.com/watch?v=...`), search terms (e.g. `lofi hip hop`), or local path. YouTube playlist URLs (containing `list=`) are automatically detected and all tracks are enqueued.
-- **Permission**: Everyone.
-- **Behavior**: If the bot is not in a voice channel, it automatically joins the user's voice channel. If a track is already playing, it appends the new track to the end of the queue and displays an "Added to Queue" embed with duration, thumbnail, and requester.
-
-#### `/pause` · `!pause`
-- **Description**: Pauses the currently playing track.
-- **Parameters**: None.
-- **Permission**: DJ / Administrator.
-- **Behavior**: Pauses the audio stream without resetting track position. Bot presence changes to "Paused".
-
-#### `/resume` · `!resume`
-- **Description**: Resumes playback of a paused track.
-- **Parameters**: None.
-- **Permission**: DJ / Administrator.
-- **Behavior**: Continues streaming audio from the exact second it was paused. Bot presence restores to the current track name.
-
-#### `/stop` · `!stop`
-- **Description**: Immediately stops audio playback, clears the queue, and resets the player state.
-- **Parameters**: None.
-- **Permission**: DJ / Administrator.
-- **Behavior**: Terminates the active FFmpeg audio process and resets queue state to `IDLE`. Bot presence returns to idle status.
-
-#### `/skip` · `!skip` · `!s`
-- **Description**: Skips the currently playing song and plays the next song in the queue.
-- **Parameters**: None.
-- **Permission**: DJ / Administrator.
-- **Behavior**: Advances queue to the next track. If the queue is empty, playback stops and player becomes idle.
-
-#### `/previous` · `!previous` · `!prev`
-- **Description**: Goes back to the previous track in the queue.
-- **Parameters**: None.
-- **Permission**: DJ / Administrator.
-- **Behavior**: Moves the queue index back one position and plays that track.
-
-#### `/seek <seconds>` · `!seek <seconds>`
-- **Description**: Jumps to a specific timestamp in the currently playing track.
-- **Parameters**:
-  - `seconds` *(Float, Required)*: Target timestamp in seconds (e.g. `90` or `125.5`).
-- **Permission**: DJ / Administrator.
-- **Behavior**: Restarts stream decoder at the specified offset.
-
-#### `/restart` · `!restart`
-- **Description**: Restarts the currently playing track from 00:00.
-- **Parameters**: None.
-- **Permission**: DJ / Administrator.
-- **Behavior**: Equivalent to `/seek 0`.
-
-#### `/loop <mode>` · `!loop <mode>`
-- **Description**: Configures repetition mode for playback.
-- **Parameters**:
-  - `mode` *(Choice: `off`, `track`, `queue`, Required)*:
-    - `off`: Disables looping (default).
-    - `track`: Repeats the current track indefinitely until skipped.
-    - `queue`: Cycles through the entire queue, returning to the start upon reaching the end.
-- **Permission**: DJ / Administrator.
-
-#### `/volume [vol]` · `!volume [vol]` · `!vol [vol]`
-- **Description**: Views or adjusts the playback volume.
-- **Parameters**:
-  - `vol` *(Integer, Optional)*: Desired volume level from `0` to `200` (%).
-- **Permission**: DJ / Administrator (when setting volume); Everyone (when viewing).
-- **Behavior**: Adjusts volume in real-time via software volume transformer without restarting the stream.
-
-#### `/nowplaying` · `!nowplaying` · `!np`
-- **Description**: Displays a rich status embed for the currently active track.
-- **Parameters**: None.
-- **Permission**: Everyone.
-- **Behavior**: Shows song title, artist, duration, and requester. Slash command version includes interactive Discord UI buttons: **Play/Pause**, **Skip**, and **Stop**.
-
-#### `/history` · `!history`
-- **Description**: Displays the last 10 songs played in this server.
-- **Parameters**: None.
-- **Permission**: Everyone.
-- **Behavior**: Lists historical tracks with title, duration, and requester. History size is configurable via `MAX_HISTORY_SIZE`.
-
-#### `/next` · `!next`
-- **Description**: Previews the immediate next track waiting in the queue.
-- **Parameters**: None.
-- **Permission**: Everyone.
-
-#### `/join` · `!join`
-- **Description**: Connects the bot to the voice channel you are currently sitting in.
-- **Parameters**: None.
-- **Permission**: Everyone.
-
-#### `/leave` · `!leave` · `!disconnect` · `!dc`
-- **Description**: Disconnects the bot from the voice channel and resets playback.
-- **Parameters**: None.
-- **Permission**: DJ / Administrator.
-
----
-
-### 2. Queue Management Commands
-
-#### `/queue show [page]` · `!queue [page]` · `!q [page]`
-- **Description**: Displays a paginated view of all upcoming tracks in the queue.
-- **Parameters**:
-  - `page` *(Integer, Optional, Default: 1)*: Page number to inspect (10 tracks per page).
-- **Permission**: Everyone.
-- **Behavior**: Lists track number, title, duration, requester, total tracks in queue, and total remaining playback time.
-
-#### `/queue shuffle` · `!shuffle`
-- **Description**: Randomizes the order of all upcoming tracks in the queue.
-- **Parameters**: None.
-- **Permission**: DJ / Administrator.
-- **Behavior**: Shuffles the queue in-place. The currently playing track is unaffected.
-
-#### `/queue clear` · `!clear`
-- **Description**: Removes all upcoming songs from the queue.
-- **Parameters**: None.
-- **Permission**: DJ / Administrator.
-- **Behavior**: Empties the queue without stopping the song currently playing.
-
-#### `/queue remove <index>` · `!remove <index>`
-- **Description**: Removes a specific song from the queue by its index position number.
-- **Parameters**:
-  - `index` *(Integer, Required)*: The position number shown in `/queue show` (1-based).
-- **Permission**: DJ / Administrator.
-
-#### `/queue move <from_pos> <to_pos>` · `!move <from> <to>`
-- **Description**: Moves a track from one position in the queue to another.
-- **Parameters**:
-  - `from_pos` *(Integer, Required)*: Current position number.
-  - `to_pos` *(Integer, Required)*: Target position number.
-- **Permission**: DJ / Administrator.
-- **Example**: `!move 21 2` moves track #21 to position #2.
-
----
-
-### 3. Local Playlist Commands
-
-#### `/playlist list` · `!playlist` · `!pl`
-- **Description**: Scans the `PLAYLISTS_DIRECTORY` and lists all available playlists.
-- **Parameters**: None.
-- **Permission**: Everyone.
-- **Behavior**: Displays each playlist name, total track count, and total duration.
-
-#### `/playlist view <name> [page]` · `!playlist view <name>` · `!pl show <name>`
-- **Description**: Displays the tracklist of a specific local playlist.
-- **Parameters**:
-  - `name` *(String, Required)*: The exact folder name of the playlist.
-  - `page` *(Integer, Optional, Default: 1)*: Page number (10 tracks per page).
-- **Permission**: Everyone.
-
-#### `/playlist play <name> [shuffle] [clear_queue]` · `!playlist play <name> [shuffle]` · `!pl play <name>`
-- **Description**: Enqueues and starts playback of an entire local playlist folder.
-- **Parameters**:
-  - `name` *(String, Required)*: Name of the playlist folder.
-  - `shuffle` *(Boolean, Optional, Default: False)*: Whether to shuffle tracks before adding to queue.
-  - `clear_queue` *(Boolean, Optional, Default: False)*: Whether to clear existing queue before playing (slash only).
-- **Permission**: Everyone.
-- **Prefix example**: `!pl play wedding shuffle`
-
-#### `/playlist reload` · `!playlist reload` · `!pl reload`
-- **Description**: Rescans the local playlist directory from disk.
-- **Parameters**: None.
-- **Permission**: DJ / Administrator.
-- **Behavior**: Detects new audio files, deleted files, or updated ID3 metadata tags without restarting the bot process.
-
----
-
-### 4. YouTube Data API Commands
-*(Active when `YOUTUBE_AUTH_MODE=oauth` or `token` is configured)*
-
-#### `/youtube search <query>`
-- **Description**: Searches YouTube via YouTube Data API v3 and returns top 5 results.
-- **Parameters**:
-  - `query` *(String, Required)*: Search keywords.
-- **Permission**: Everyone.
-- **Behavior**: Displays video titles, channel names, publication dates, and URLs with direct buttons.
-
-#### `/youtube video <url>`
-- **Description**: Inspects detailed metadata of a specific YouTube video.
-- **Parameters**:
-  - `url` *(String, Required)*: YouTube video link.
-- **Permission**: Everyone.
-- **Behavior**: Returns rich embed with view count, like count, tags, duration, and channel information.
-
-#### `/youtube playlist <url>`
-- **Description**: Inspects metadata and track listing of a YouTube playlist.
-- **Parameters**:
-  - `url` *(String, Required)*: YouTube playlist link.
-- **Permission**: Everyone.
-
----
-
-### 5. General & Diagnostic Commands
-
-#### `/about` · `!about`
-- **Description**: Displays bot information including version, uptime, and connected servers.
-- **Parameters**: None.
-- **Permission**: Everyone.
-
-#### `/help` · `!help`
-- **Description**: Displays a command overview organized by category.
-- **Parameters**: None.
-- **Permission**: Everyone.
-- **Behavior**: Prefix version dynamically shows the configured command prefix in all examples.
-
-#### `/ping` · `!ping`
-- **Description**: Measures and displays the bot's WebSocket latency.
-- **Parameters**: None.
-- **Permission**: Everyone.
-- **Behavior**: Returns latency in milliseconds (ms).
-
----
-
-## Roles & Permission Hierarchy
-
-The bot implements a strict **3-tier permission hierarchy** to protect your voice channel from unwanted skips, volume spikes, and queue deletion while allowing everyone to request songs.
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     1. ADMINISTRATOR                    │
-│   • Has native Discord "Administrator" permission       │
-│   • Bypasses all checks — can run 100% of all commands  │
-└────────────────────────────┬────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────┐
-│                       2. DJ ROLE                        │
-│   • Has the Discord role named in DJ_ROLE_NAME (e.g. DJ)│
-│   • Controls playback, queues, volume, and playlists    │
-└────────────────────────────┬────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────┐
-│                    3. STANDARD USER                     │
-│   • Every regular server member                         │
-│   • Can safely queue tracks and check bot status        │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-### Understanding the 3 Permission Tiers
-
-1. **Standard User (Everyone)**:
-   - Any server member without the DJ role.
-   - **Allowed Actions**: Safe, non-disruptive commands. They can enqueue songs (`/play`), view what's playing (`/nowplaying`), check the upcoming queue (`/queue show`), view playback history (`/history`), browse local playlists (`/playlist list`, `/playlist view`), summon the bot to their voice channel (`/join`), and use utility commands (`/about`, `/help`, `/ping`, `/youtube`).
-   - **Blocked Actions**: They **cannot** skip songs, pause, resume, stop, change volume, seek, loop, reorder the queue, or remove other people's songs.
-
-2. **DJ Role (Configured via `DJ_ROLE_NAME` in `config.txt`)**:
-   - Any member assigned the Discord role specified by `DJ_ROLE_NAME` (default: `DJ`).
-   - **Allowed Actions**: All Standard User commands **PLUS** elevated playback and queue management controls:
-     - Playback control: `/skip`, `/previous`, `/pause`, `/resume`, `/stop`, `/seek`, `/restart`
-     - Audio tuning: `/volume <0-200>`, `/loop <off|track|queue>`
-     - Queue editing: `/queue shuffle`, `/queue clear`, `/queue remove <index>`, `/queue move <from> <to>`
-     - Voice & disk: `/leave`, `/playlist reload`
-
-3. **Administrator**:
-   - Any server member with Discord's native **Administrator** guild permission (`member.guild_permissions.administrator`).
-   - **Allowed Actions**: Bypasses all role checks automatically. Server administrators never need to assign themselves the DJ role.
-
----
-
-### Step-by-Step Discord Setup Guide for Server Owners
-
-If you download and host this bot, follow these simple steps to configure roles on your Discord server:
-
-1. **Create the Role in Discord**:
-   - Open Discord and navigate to **Server Settings** -> **Roles**.
-   - Click **Create Role**.
-   - Name the role (e.g., `DJ`, `Music Master`, `VIP`, or any name you prefer).
-   - *(Optional)* Give the role a distinct color so DJs stand out in the member list.
-2. **Assign the Role to Trusted Members**:
-   - Right-click any member you trust with playback control -> **Roles** -> check your DJ role.
-3. **Configure `config.txt`**:
-   - Open `config.txt` and set `DJ_ROLE_NAME` to match your role name:
-     ```ini
-     # If you named your role "DJ":
-     DJ_ROLE_NAME=DJ
-
-     # Or if you named your role "Music Master":
-     DJ_ROLE_NAME=Music Master
-     ```
-   - *Note:* The role check is **case-insensitive**, meaning `dj`, `DJ`, and `Dj` will all match.
-4. **Admins are Ready Automatically**:
-   - Server Owners and Administrators don't need any special configuration or roles — the bot recognizes their native admin permission instantly.
-
----
-
-### Command Permission Comparison Matrix
-
-The table below shows exactly which commands each role can run:
-
-| Command (Slash / Prefix) | Description | Standard User | DJ Role (`DJ_ROLE_NAME`) | Server Admin |
-|---|---|:---:|:---:|:---:|
-| `/play` · `!play` (`!p`) | Enqueue audio from YouTube, search, or local path | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/nowplaying` · `!nowplaying` (`!np`) | Display currently playing track & embed | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/queue show` · `!queue` (`!q`) | View upcoming tracks in the queue | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/history` · `!history` | View last 10 played tracks | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/next` · `!next` | Preview the immediate next track | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/playlist list` · `!playlist list` (`!pl`) | List available local playlists | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/playlist view` · `!playlist view` | View tracks inside a local playlist | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/playlist play` · `!playlist play` | Enqueue a local playlist | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/join` · `!join` | Summon bot to user's voice channel | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/youtube` (`search`, `video`, `playlist`) | YouTube Data API metadata inspection | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/volume` *(no arguments)* | Check current playback volume | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/about`, `/help`, `/ping` | Bot info, help menu, and ping latency | ✅ Yes | ✅ Yes | ✅ Yes |
-| `/pause` · `!pause` | Pause playback | ❌ No | ✅ Yes | ✅ Yes |
-| `/resume` · `!resume` | Resume paused playback | ❌ No | ✅ Yes | ✅ Yes |
-| `/skip` · `!skip` (`!s`) | Skip to next track in queue | ❌ No | ✅ Yes | ✅ Yes |
-| `/previous` · `!previous` (`!prev`) | Go back to previous track | ❌ No | ✅ Yes | ✅ Yes |
-| `/stop` · `!stop` | Stop playback & clear player state | ❌ No | ✅ Yes | ✅ Yes |
-| `/seek` · `!seek <seconds>` | Jump to timestamp in track | ❌ No | ✅ Yes | ✅ Yes |
-| `/restart` · `!restart` | Restart current track from 00:00 | ❌ No | ✅ Yes | ✅ Yes |
-| `/volume <0-200>` · `!volume <vol>` | Adjust playback volume level | ❌ No | ✅ Yes | ✅ Yes |
-| `/loop <mode>` · `!loop <mode>` | Change loop mode (`off`, `track`, `queue`) | ❌ No | ✅ Yes | ✅ Yes |
-| `/queue shuffle` · `!shuffle` | Randomize upcoming tracks in queue | ❌ No | ✅ Yes | ✅ Yes |
-| `/queue clear` · `!clear` | Remove all upcoming tracks from queue | ❌ No | ✅ Yes | ✅ Yes |
-| `/queue remove` · `!remove <index>` | Remove a specific track from queue | ❌ No | ✅ Yes | ✅ Yes |
-| `/queue move` · `!move <from> <to>` | Move track position in queue | ❌ No | ✅ Yes | ✅ Yes |
-| `/playlist reload` · `!playlist reload` | Rescan local playlist folders from disk | ❌ No | ✅ Yes | ✅ Yes |
-| `/leave` · `!leave` (`!disconnect`, `!dc`) | Disconnect bot from voice channel | ❌ No | ✅ Yes | ✅ Yes |
 
 ---
 
 ## Troubleshooting & FAQ
 
 ### 1. `HTTP error 403 Forbidden` / `Server returned 403 Forbidden`
-- **Cause**: YouTube CDN blocked direct FFmpeg connection.
-- **Solution**: Verify that `bot/audio/player.py` uses `YTDLPPipeAudio` to pipe audio. Ensure `cookies.txt` is present in your bot directory.
+- **Cause**: YouTube CDN blocked direct FFmpeg connections on datacenter IPs.
+- **Solution**: The bot uses `YTDLPPipeAudio` by default. Ensure a valid `cookies.txt` is present in your bot directory.
 
 ### 2. `The page needs to be reloaded` / `n challenge solving failed`
-- **Cause**: Missing JavaScript engine needed by `yt-dlp` to solve YouTube's n-challenge cipher.
+- **Cause**: Missing JavaScript engine needed by `yt-dlp` to execute YouTube's n-challenge cipher.
 - **Solution**: Install Deno globally:
   ```bash
   curl -fsSL https://deno.land/install.sh | sh
@@ -1036,25 +496,25 @@ The table below shows exactly which commands each role can run:
   deno --version
   ```
 
-### 3. `FFmpeg is not installed or not in PATH`
-- Run `ffmpeg -version` in your terminal to confirm installation.
-- Ensure the directory containing the binary is in the system `PATH`.
+### 3. Web UI reports "Bot Offline"
+- **Cause**: Bot is not paired or `PANEL_SECRET` does not match `AGENT_SECRET`.
+- **Solution**: Verify `PANEL_ENABLED=true` in `config.txt` and ensure `PANEL_SECRET` in `config.txt` matches `AGENT_SECRET` in `web/.env` character-for-character.
 
-### 4. Bot connects to voice but no audio is heard
-- Ensure `PyNaCl` is installed in your Python environment (`pip install PyNaCl`).
-- Check Discord Voice Channel permissions: verify the bot role has **Connect**, **Speak**, and **Use Voice Activity** permissions.
+### 4. Discord Login Fails with "Invalid OAuth2 Redirect"
+- **Cause**: The redirect URL configured in the Discord Developer Portal does not match your browser URL.
+- **Solution**: Ensure `https://panel.yourdomain.com/auth/discord/callback` is added under **OAuth2 &rarr; Redirects** in the Developer Portal.
 
-### 5. Slash commands don't show up in Discord
-- Global slash commands can take several minutes to propagate on Discord's servers after registering a new bot.
-- Check startup logs for `Application command tree synced successfully`.
-- Re-invite the bot using an invite link generated with both `bot` and `applications.commands` scopes selected.
+---
 
-### 6. Updating YouTube Cookies
-- YouTube session cookies periodically expire.
-- If YouTube playback starts failing with bot warnings, re-export a fresh `cookies.txt` from your browser using the extension and replace `cookies.txt` in your bot folder, then restart the service:
-  ```bash
-  sudo systemctl restart musicbot
-  ```
+## Developer & Community
+
+Created and maintained by **Walid Bouachir** ([@NoxianWill](https://github.com/noxianwill)).
+
+- 🐙 **GitHub:** [noxianwill](https://github.com/noxianwill)
+- 🐦 **Twitter / X:** [@walidbouachir](https://x.com/walidbouachir)
+- 📺 **YouTube:** [@NoxianWill](https://www.youtube.com/@NoxianWill)
+- 🎮 **Twitch:** [noxianwill](https://www.twitch.tv/noxianwill)
+- 📷 **Instagram:** [@bouachir.walid](https://www.instagram.com/bouachir.walid)
 
 ---
 
