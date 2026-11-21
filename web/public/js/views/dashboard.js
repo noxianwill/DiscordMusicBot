@@ -60,43 +60,51 @@ export async function render(container, state) {
 
   container.innerHTML = `
     <!-- Top toolbar: Server Selector & Voice Channel -->
-    <div class="card" style="margin-bottom: 1.5rem;">
-      <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 240px; flex-wrap: wrap;">
-          <label class="form-label" style="margin: 0; white-space: nowrap; font-weight: 600;">Server:</label>
-          <select id="server-select" class="form-select" style="max-width: 260px;">
-            ${guilds.map(g => `
-              <option value="${escapeHtml(g.id)}" ${g.id === selectedGuildId ? 'selected' : ''}>
-                ${escapeHtml(g.name)} (${escapeHtml(g.tier)})
-              </option>
-            `).join('')}
-          </select>
+    <div class="card" style="margin-bottom: 1.25rem; padding: 1rem 1.35rem;">
+      <div class="topbar-container">
+        <div class="topbar-server-group">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+            <label class="form-label" style="margin: 0; white-space: nowrap; font-weight: 600; font-size: 13px;">Server:</label>
+            <select id="server-select" class="form-select" style="min-width: 170px; max-width: 250px; font-weight: 600;">
+              ${guilds.map(g => `
+                <option value="${escapeHtml(g.id)}" ${g.id === selectedGuildId ? 'selected' : ''}>
+                  ${escapeHtml(g.name)} (${escapeHtml(g.tier)})
+                </option>
+              `).join('')}
+            </select>
+          </div>
           <button id="btn-share-listener" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;" title="Copy public link so friends can listen & watch in real-time without logging in">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
             Share Live Link
           </button>
         </div>
 
-        <div id="voice-controls-bar" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+        <div id="voice-controls-bar" class="topbar-voice-group">
           <span style="font-size: 13px; color: var(--text-muted);">Loading voice status...</span>
         </div>
       </div>
     </div>
 
     <!-- Play input box -->
-    <div class="card">
-      <div class="card-title">
-        <span>Add Music</span>
-        <div style="display: flex; gap: 0.35rem; align-items: center; font-size: 11px; color: var(--text-muted);">
-          <span>Supports: YouTube &bull; Spotify &bull; SoundCloud</span>
+    <div class="card" style="margin-bottom: 1.25rem;">
+      <div class="card-title" style="margin-bottom: 0.75rem;">
+        <span style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--accent);"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Add Music
+        </span>
+        <div style="display: flex; gap: 0.85rem; align-items: center; font-size: 11px; font-weight: 500;">
+          <span class="source-pill-yt"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span> YouTube</span>
+          <span class="source-pill-sp"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span> Spotify</span>
+          <span class="source-pill-sc"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span> SoundCloud</span>
         </div>
       </div>
       <form id="play-form" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 260px; position: relative;">
-          <input type="text" id="play-input" class="form-control" placeholder="Search song, or paste YouTube, Spotify, or SoundCloud link..." autocomplete="off">
+          <input type="text" id="play-input" class="form-control" placeholder="Search track name, or paste YouTube, Spotify, or SoundCloud link..." autocomplete="off">
           <span id="query-type-badge" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--text-muted); background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px;">Search</span>
         </div>
-        <button type="submit" id="btn-play-submit" class="btn btn-primary" style="min-width: 100px;">
+        <button type="submit" id="btn-play-submit" class="btn btn-primary" style="min-width: 105px; gap: 6px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
           Play
         </button>
@@ -256,7 +264,7 @@ export async function render(container, state) {
 
     if (inVoice) {
       vcContainer.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
+        <div class="voice-status-subgroup">
           <div class="voice-pill" title="Currently in voice channel">
             <span class="voice-pulse"></span>
             <span>Connected: <strong>${escapeHtml(vcName)}</strong></span>
@@ -272,8 +280,11 @@ export async function render(container, state) {
               ⚡ Optimize to Frankfurt
             </button>
           ` : ''}
+        </div>
+
+        <div class="voice-actions-subgroup">
           ${canSwitch ? `
-            <select id="voice-select" class="form-select" style="min-width: 160px; max-width: 210px;" title="Switch voice channel">
+            <select id="voice-select" class="form-select form-select-sm" style="min-width: 145px; max-width: 195px;" title="Switch voice channel">
               <option value="">Switch channel...</option>
               ${voiceChannels.map(c => `
                 <option value="${c.id}" ${c.userIsHere ? 'selected' : ''}>
@@ -284,8 +295,8 @@ export async function render(container, state) {
             <button id="btn-switch-vc" class="btn btn-sm" title="Move to selected channel">Switch</button>
           ` : ''}
           ${canLeave ? `
-            <button id="btn-disconnect-vc" class="btn btn-danger btn-sm" title="Disconnect bot from voice channel">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 2px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <button id="btn-disconnect-vc" class="btn btn-danger btn-sm" style="white-space: nowrap;" title="Disconnect bot from voice channel">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 2px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               Disconnect
             </button>
           ` : ''}
@@ -463,27 +474,39 @@ export async function render(container, state) {
         <input type="range" id="seek-slider" class="seek-slider" min="0" max="${duration || 100}" value="${Math.min(localElapsed, duration || 100)}" step="1" ${(!canControl || !duration) ? 'disabled' : ''} title="${duration ? 'Seek position' : 'Live stream / unknown duration'}">
       </div>
 
-      <div class="playback-controls">
-        <button id="btn-prev" class="btn btn-sm" ${!canControl ? 'disabled' : ''} title="Previous Track">&larr; Prev</button>
-        <button id="btn-play-pause" class="btn btn-primary btn-sm" ${!canControl ? 'disabled' : ''}>
-          ${isPlaying ? 'Pause' : 'Resume'}
-        </button>
-        <button id="btn-stop" class="btn btn-sm" ${!canControl ? 'disabled' : ''} title="Stop Playback">Stop</button>
-        <button id="btn-skip" class="btn btn-sm" ${!canControl ? 'disabled' : ''} title="Skip Track">Skip &rarr;</button>
-        <button id="btn-restart" class="btn btn-sm" ${!canControl ? 'disabled' : ''} title="Restart Track">&#8635; Restart</button>
+      <div class="playback-controls-row">
+        <div class="playback-transport-group">
+          <button id="btn-prev" class="btn btn-sm" ${!canControl ? 'disabled' : ''} title="Previous Track" style="padding: 0.45rem 0.75rem;">
+            &larr; Prev
+          </button>
+          <button id="btn-play-pause" class="btn btn-primary btn-sm" ${!canControl ? 'disabled' : ''} style="min-width: 82px; padding: 0.45rem 0.95rem; font-weight: 600;">
+            ${isPlaying ? 'Pause' : 'Resume'}
+          </button>
+          <button id="btn-stop" class="btn btn-sm" ${!canControl ? 'disabled' : ''} title="Stop Playback" style="padding: 0.45rem 0.75rem;">
+            Stop
+          </button>
+          <button id="btn-skip" class="btn btn-sm" ${!canControl ? 'disabled' : ''} title="Skip Track" style="padding: 0.45rem 0.75rem;">
+            Skip &rarr;
+          </button>
+          <button id="btn-restart" class="btn btn-sm" ${!canControl ? 'disabled' : ''} title="Restart Track" style="padding: 0.45rem 0.75rem;">
+            &#8635; Restart
+          </button>
+        </div>
 
-        <button id="btn-loop" class="btn btn-sm" ${!canControl ? 'disabled' : ''} title="Toggle Loop Mode">
-          Loop: ${escapeHtml(loopMode.toUpperCase())}
-        </button>
+        <div class="playback-utility-group">
+          <button id="btn-loop" class="btn btn-sm" ${!canControl ? 'disabled' : ''} title="Toggle Loop Mode" style="padding: 0.45rem 0.75rem;">
+            Loop: ${escapeHtml(loopMode.toUpperCase())}
+          </button>
 
-        <button id="btn-toggle-lyrics" class="btn btn-sm" title="Synchronized Karaoke Lyrics">
-          🎤 Lyrics
-        </button>
+          <button id="btn-toggle-lyrics" class="btn btn-sm ${isLyricsOpen ? 'btn-primary' : ''}" style="padding: 0.45rem 0.75rem;" title="Synchronized Karaoke Lyrics">
+            🎤 Lyrics
+          </button>
 
-        <div style="display: flex; align-items: center; gap: 0.35rem; margin-left: auto;">
-          <span style="font-size: 12px; color: var(--text-muted);">&#128266;</span>
-          <input type="range" id="vol-slider" class="volume-slider" min="0" max="100" value="${volume}" ${!canControl ? 'disabled' : ''} title="Volume">
-          <span id="vol-text" style="font-size: 11px; width: 28px; font-family: var(--font-mono);">${volume}%</span>
+          <div style="display: flex; align-items: center; gap: 0.4rem; padding-left: 0.65rem; border-left: 1px solid var(--border);">
+            <span style="font-size: 13px; color: var(--text-muted);">&#128266;</span>
+            <input type="range" id="vol-slider" class="volume-slider" min="0" max="100" value="${volume}" ${!canControl ? 'disabled' : ''} title="Volume">
+            <span id="vol-text" style="font-size: 11px; width: 28px; font-family: var(--font-mono); color: var(--text-muted);">${volume}%</span>
+          </div>
         </div>
       </div>
 
@@ -807,23 +830,23 @@ export async function render(container, state) {
         ${upcoming.map((t, idx) => `
           <li class="list-item queue-item" draggable="${canControl ? 'true' : 'false'}" data-index="${idx}">
             ${canControl ? `<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>` : ''}
-            <span style="font-size: 12px; color: var(--text-muted); width: 26px; font-family: var(--font-mono);">#${idx + 1}</span>
-            <div style="flex: 1; min-width: 0;">
-              <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-bright);" title="${escapeHtml(t.title)}">
+            <span style="font-size: 12px; color: var(--text-muted); width: 26px; font-family: var(--font-mono); text-align: center;">#${idx + 1}</span>
+            <div style="flex: 1; min-width: 0; padding-right: 0.5rem;">
+              <div style="font-weight: 500; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-bright);" title="${escapeHtml(t.title)}">
                 ${escapeHtml(t.title)}
               </div>
-              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
-                ${escapeHtml(t.artist || '')} &bull; ${formatDuration(t.duration)} ${t.requester ? `&bull; ${escapeHtml(t.requester)}` : ''}
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${escapeHtml(t.artist || '')} &bull; ${formatDuration(t.duration)} ${t.requester ? `&bull; Added by ${escapeHtml(t.requester)}` : ''}
               </div>
             </div>
             ${canControl ? `
-              <div style="display: flex; gap: 0.25rem; align-items: center;">
-                <button class="btn btn-primary btn-sm btn-queue-play" data-index="${idx}" title="Play Track Now" style="padding: 2px 8px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center;">
+              <div class="queue-btn-group">
+                <button class="btn btn-primary btn-sm queue-action-btn btn-queue-play" data-index="${idx}" title="Play Track Now">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
-                ${idx > 0 ? `<button class="btn btn-sm btn-move" data-from="${idx}" data-to="${idx - 1}" title="Move Up">&uarr;</button>` : ''}
-                ${idx < upcoming.length - 1 ? `<button class="btn btn-sm btn-move" data-from="${idx}" data-to="${idx + 1}" title="Move Down">&darr;</button>` : ''}
-                <button class="btn btn-danger btn-sm btn-remove" data-index="${idx}" title="Remove Track">&times;</button>
+                <button class="btn btn-sm queue-action-btn btn-move" data-from="${idx}" data-to="${idx - 1}" title="Move Up" ${idx === 0 ? 'disabled style="opacity: 0.15; cursor: default;"' : ''}>&uarr;</button>
+                <button class="btn btn-sm queue-action-btn btn-move" data-from="${idx}" data-to="${idx + 1}" title="Move Down" ${idx === upcoming.length - 1 ? 'disabled style="opacity: 0.15; cursor: default;"' : ''}>&darr;</button>
+                <button class="btn btn-danger btn-sm queue-action-btn btn-remove" data-index="${idx}" title="Remove Track">&times;</button>
               </div>
             ` : ''}
           </li>
@@ -919,10 +942,11 @@ export async function render(container, state) {
       };
     }
 
-    for (const btn of queueContainer.querySelectorAll('.btn-move')) {
+    for (const btn of queueContainer.querySelectorAll('.btn-move:not([disabled])')) {
       btn.onclick = async () => {
         const from = Number(btn.getAttribute('data-from'));
         const to = Number(btn.getAttribute('data-to'));
+        if (isNaN(from) || isNaN(to) || from === to) return;
         try {
           await api.rpc('queue.move', selectedGuildId, { from, to });
           await refreshData();

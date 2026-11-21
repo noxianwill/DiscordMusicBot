@@ -885,3 +885,104 @@ input[type="range"]:focus {
   padding-left: 10px;
   text-shadow: 0 0 12px rgba(88, 101, 242, 0.5);
 }
+
+/* Optimized Dashboard UI Components */
+.topbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.topbar-server-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.topbar-voice-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.voice-status-subgroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.voice-actions-subgroup {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: nowrap;
+}
+
+.queue-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.queue-action-btn {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+}
+
+.playback-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.playback-transport-group {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.playback-utility-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.source-pill-yt {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ff5555;
+}
+
+.source-pill-sp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #1ed760;
+}
+
+.source-pill-sc {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ff8833;
+}
