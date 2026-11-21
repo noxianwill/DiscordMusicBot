@@ -792,6 +792,7 @@ class ControlApiCog(commands.Cog):
         player = self.get_player(guild.id)
         curr = await player.queue.current()
         upcoming = await player.queue.upcoming()
+        cur_idx = player.queue.current_index
 
         current_data = None
         if curr:
@@ -805,6 +806,22 @@ class ControlApiCog(commands.Cog):
                 "sourceType": source_type_str,
                 "requester": curr.requester_name
             }
+
+        all_tracks = []
+        for idx, t in enumerate(player.queue._tracks):
+            source_type_str = t.source_type.name.lower() if hasattr(t.source_type, 'name') else str(t.source_type).lower()
+            all_tracks.append({
+                "index": idx,
+                "title": t.title,
+                "artist": t.artist or "",
+                "duration": t.duration,
+                "thumbnail": t.thumbnail_url,
+                "url": t.source_uri,
+                "requester": t.requester_name,
+                "sourceType": source_type_str,
+                "isCurrent": (idx == cur_idx),
+                "isPlayed": (idx < cur_idx)
+            })
 
         upcoming_list = []
         for idx, t in enumerate(upcoming):
@@ -821,6 +838,8 @@ class ControlApiCog(commands.Cog):
             "ok": True,
             "data": {
                 "current": current_data,
+                "currentIndex": cur_idx,
+                "tracks": all_tracks,
                 "upcoming": upcoming_list,
                 "loop": player.queue.loop_mode.name.lower(),
                 "length": len(player.queue)
@@ -836,15 +855,13 @@ class ControlApiCog(commands.Cog):
         player = self.get_player(guild.id)
         track = await player.jump_to_queue_index(index)
         if not track:
-            return {"ok": False, "code": "NOT_FOUND", "error": "Track not found in upcoming queue"}
+            return {"ok": False, "code": "NOT_FOUND", "error": "Track not found in queue"}
         return {"ok": True, "data": {"title": track.title}}
 
     async def _action_queue_remove(self, user_id: int, guild: discord.Guild, params: Dict[str, Any], tier: str) -> Dict[str, Any]:
         index = int(params.get("index", -1))
         player = self.get_player(guild.id)
-        offset = (player.queue.current_index + 1) if player.queue.current_index >= 0 else 0
-        actual_idx = offset + index
-        removed = await player.queue.remove(actual_idx)
+        removed = await player.queue.remove(index)
         if not removed:
             return {"ok": False, "code": "NOT_FOUND", "error": "Queue item not found"}
         return {"ok": True, "data": {"title": removed.title}}
@@ -853,10 +870,7 @@ class ControlApiCog(commands.Cog):
         from_idx = int(params.get("from", -1))
         to_idx = int(params.get("to", -1))
         player = self.get_player(guild.id)
-        offset = (player.queue.current_index + 1) if player.queue.current_index >= 0 else 0
-        actual_from = offset + from_idx
-        actual_to = offset + to_idx
-        ok = await player.queue.move(actual_from, actual_to)
+        ok = await player.queue.move(from_idx, to_idx)
         if not ok:
             return {"ok": False, "code": "BAD_REQUEST", "error": "Invalid queue positions"}
         return {"ok": True, "data": {}}
@@ -1082,10 +1096,27 @@ class ControlApiCog(commands.Cog):
                         if player:
                             curr = await player.queue.current()
                             upcoming = await player.queue.upcoming()
+                            cur_idx = player.queue.current_index
+                            all_tracks = []
+                            for idx, t in enumerate(player.queue._tracks):
+                                source_type_str = t.source_type.name.lower() if hasattr(t.source_type, 'name') else str(t.source_type).lower()
+                                all_tracks.append({
+                                    "index": idx,
+                                    "title": t.title,
+                                    "artist": t.artist or "",
+                                    "duration": t.duration,
+                                    "thumbnail": t.thumbnail_url,
+                                    "url": t.source_uri,
+                                    "requester": t.requester_name,
+                                    "sourceType": source_type_str,
+                                    "isCurrent": (idx == cur_idx),
+                                    "isPlayed": (idx < cur_idx)
+                                })
                             self._broadcast_event({
                                 "kind": "queue",
                                 "guildId": str(guild.id),
                                 "data": {
+                                    "currentIndex": cur_idx,
                                     "current": {
                                         "title": curr.title,
                                         "artist": curr.artist or "",
@@ -1094,6 +1125,7 @@ class ControlApiCog(commands.Cog):
                                         "url": curr.source_uri,
                                         "requester": curr.requester_name
                                     } if curr else None,
+                                    "tracks": all_tracks,
                                     "upcoming": [
                                         {
                                             "index": idx,
@@ -1105,7 +1137,8 @@ class ControlApiCog(commands.Cog):
                                         }
                                         for idx, t in enumerate(upcoming)
                                     ],
-                                    "loop": player.queue.loop_mode.name.lower()
+                                    "loop": player.queue.loop_mode.name.lower(),
+                                    "length": len(player.queue)
                                 }
                             })
             except asyncio.CancelledError:

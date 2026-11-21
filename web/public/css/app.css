@@ -986,3 +986,39 @@ input[type="range"]:focus {
   gap: 4px;
   color: #ff8833;
 }
+
+/* Full Queue / Playlist Highlighting & Styling */
+.queue-item.is-current {
+  background: rgba(88, 101, 242, 0.16) !important;
+  border-left: 3.5px solid var(--accent) !important;
+  box-shadow: inset 0 0 16px rgba(88, 101, 242, 0.12);
+}
+
+.queue-item.is-current .track-title-text {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.queue-item.is-played {
+  opacity: 0.58;
+}
+
+.queue-item.is-played:hover {
+  opacity: 0.92;
+}
+
+.playing-now-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 1px 5.5px;
+  border-radius: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+}

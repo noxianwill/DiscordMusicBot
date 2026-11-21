@@ -499,6 +499,10 @@ export async function render(container, state) {
         </div>
 
         <div class="playback-utility-group">
+          <button id="btn-save-current" class="btn btn-sm" style="padding: 0.45rem 0.75rem;" title="Save current song to a local playlist">
+            💾 Save
+          </button>
+
           <button id="btn-loop" class="btn btn-sm" ${!canControl ? 'disabled' : ''} title="Toggle Loop Mode" style="padding: 0.45rem 0.75rem;">
             Loop: ${escapeHtml(loopMode.toUpperCase())}
           </button>
@@ -806,56 +810,214 @@ export async function render(container, state) {
         } catch (_) { }
       };
     }
+
+    const btnSaveCurrent = nowPlayingContainer.querySelector('#btn-save-current');
+    if (btnSaveCurrent) {
+      btnSaveCurrent.onclick = () => {
+        if (cur) promptSaveToPlaylist(cur);
+      };
+    }
+  }
+
+  async function promptSaveToPlaylist(track) {
+    if (!track || !track.title) return;
+    let playlists = [];
+    try {
+      const res = await api.rpc('playlists.list');
+      playlists = Array.isArray(res) ? res : (res?.data || []);
+    } catch (_) {
+      playlists = [];
+    }
+
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        display: flex; align-items: center; justify-content: center; z-index: 10000;
+        animation: modalFadeIn 0.15s ease-out;
+      `;
+
+      const box = document.createElement('div');
+      box.className = 'card';
+      box.style.cssText = `
+        max-width: 460px; width: 92%; margin: 0;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border);
+        animation: modalPopIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      `;
+
+      const plOptions = playlists.map(p =>
+        `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)} (${p.trackCount || 0} tracks)</option>`
+      ).join('');
+
+      box.innerHTML = `
+        <div class="card-title" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+          <span>💾</span>
+          <span>Save to Local Playlist</span>
+        </div>
+        <div style="font-size: 13px; color: var(--text-bright); margin-bottom: 1rem; padding: 0.65rem 0.85rem; background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); border: 1px solid var(--border);">
+          <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(track.title)}</div>
+          ${track.artist ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${escapeHtml(track.artist)}</div>` : ''}
+        </div>
+
+        <form id="save-track-form" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="form-group" style="margin: 0;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">Target Playlist Folder</label>
+            <select id="save-pl-select" class="form-control" style="width: 100%; box-sizing: border-box; font-size: 13.5px;">
+              ${plOptions}
+              <option value="__NEW__">+ Create New Playlist...</option>
+            </select>
+          </div>
+
+          <div id="new-pl-group" class="form-group" style="margin: 0; display: ${playlists.length === 0 ? 'block' : 'none'};">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">New Playlist Folder Name</label>
+            <input type="text" id="save-pl-new-name" class="form-control" placeholder="e.g. Favorites" style="width: 100%; box-sizing: border-box; font-size: 13.5px;" autocomplete="off">
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 0.5rem;">
+            <button type="button" class="btn btn-sm" id="modal-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm" id="modal-submit" style="font-weight: 600;">Save Track</button>
+          </div>
+        </form>
+      `;
+
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+
+      const select = box.querySelector('#save-pl-select');
+      const newGroup = box.querySelector('#new-pl-group');
+      const newNameInput = box.querySelector('#save-pl-new-name');
+      const form = box.querySelector('#save-track-form');
+      const cancelBtn = box.querySelector('#modal-cancel');
+      const submitBtn = box.querySelector('#modal-submit');
+
+      if (playlists.length === 0) {
+        select.value = '__NEW__';
+        newGroup.style.display = 'block';
+        setTimeout(() => newNameInput.focus(), 20);
+      }
+
+      select.onchange = () => {
+        if (select.value === '__NEW__') {
+          newGroup.style.display = 'block';
+          newNameInput.focus();
+        } else {
+          newGroup.style.display = 'none';
+        }
+      };
+
+      const cleanup = () => {
+        window.removeEventListener('keydown', handleKey);
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        resolve();
+      };
+
+      const handleKey = (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          cleanup();
+        }
+      };
+      window.addEventListener('keydown', handleKey);
+      overlay.onclick = (e) => { if (e.target === overlay) cleanup(); };
+      cancelBtn.onclick = cleanup;
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        let targetPlaylist = select.value;
+        if (targetPlaylist === '__NEW__') {
+          targetPlaylist = newNameInput.value.trim();
+          if (!targetPlaylist) {
+            showToast('Please enter a playlist name', 'error');
+            newNameInput.focus();
+            return;
+          }
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+
+        try {
+          const res = await api.rpc('playlists.save_track', null, {
+            playlist: targetPlaylist,
+            url: track.url || '',
+            title: track.title,
+            artist: track.artist || ''
+          });
+          showToast(res?.message || `Saved "${track.title}" to playlist "${targetPlaylist}"!`, 'success');
+          cleanup();
+        } catch (err) {
+          showToast(err.message || 'Failed to save track', 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Save Track';
+        }
+      };
+    });
   }
 
   function renderQueue() {
-    const upcoming = currentQueue?.upcoming || [];
+    const tracks = (currentQueue?.tracks && currentQueue.tracks.length > 0)
+      ? currentQueue.tracks
+      : (currentQueue?.upcoming || []);
+    const curIdx = currentQueue?.currentIndex ?? -1;
     const canControl = isDjOrAbove();
 
     const queueSummary = container.querySelector('#queue-header-summary');
     if (queueSummary) {
-      if (upcoming.length > 0) {
-        const totalSec = upcoming.reduce((acc, t) => acc + (t.duration || 0), 0);
-        queueSummary.textContent = `• ${upcoming.length} tracks (${formatDuration(totalSec)})`;
+      if (tracks.length > 0) {
+        const totalSec = tracks.reduce((acc, t) => acc + (t.duration || 0), 0);
+        const currentPosStr = curIdx >= 0 ? `Track ${curIdx + 1} of ` : '';
+        queueSummary.textContent = `• ${currentPosStr}${tracks.length} tracks (${formatDuration(totalSec)})`;
       } else {
         queueSummary.textContent = '';
       }
     }
 
-    btnShuffle.style.display = canControl && upcoming.length > 1 ? 'inline-block' : 'none';
-    btnClear.style.display = canControl && upcoming.length > 0 ? 'inline-block' : 'none';
+    btnShuffle.style.display = canControl && tracks.length > 1 ? 'inline-block' : 'none';
+    btnClear.style.display = canControl && tracks.length > 0 ? 'inline-block' : 'none';
 
-    if (upcoming.length === 0) {
+    if (tracks.length === 0) {
       queueContainer.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2.5rem 0;">Queue is empty.</p>';
       return;
     }
 
     queueContainer.innerHTML = `
-      <ul class="list-group" id="queue-list" style="max-height: 400px; overflow-y: auto;">
-        ${upcoming.map((t, idx) => `
-          <li class="list-item queue-item" draggable="${canControl ? 'true' : 'false'}" data-index="${idx}">
-            ${canControl ? `<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>` : ''}
-            <span style="font-size: 12px; color: var(--text-muted); width: 26px; font-family: var(--font-mono); text-align: center;">#${idx + 1}</span>
-            <div style="flex: 1; min-width: 0; padding-right: 0.5rem;">
-              <div style="font-weight: 500; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-bright);" title="${escapeHtml(t.title)}">
-                ${escapeHtml(t.title)}
+      <ul class="list-group" id="queue-list" style="max-height: 420px; overflow-y: auto;">
+        ${tracks.map((t, loopIdx) => {
+          const idx = (typeof t.index === 'number') ? t.index : loopIdx;
+          const isCurrent = Boolean(t.isCurrent || (curIdx >= 0 && idx === curIdx));
+          const isPlayed = Boolean(t.isPlayed || (curIdx >= 0 && idx < curIdx));
+          return `
+            <li class="list-item queue-item ${isCurrent ? 'is-current' : ''} ${isPlayed ? 'is-played' : ''}" draggable="${canControl ? 'true' : 'false'}" data-index="${idx}">
+              ${canControl ? `<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>` : ''}
+              <span class="queue-track-number" style="font-size: 12px; color: ${isCurrent ? 'var(--accent)' : 'var(--text-muted)'}; width: 28px; font-family: var(--font-mono); text-align: center; font-weight: ${isCurrent ? '700' : '500'};">
+                ${isCurrent ? '▶' : (isPlayed ? '✓' : `#${idx + 1}`)}
+              </span>
+              <div style="flex: 1; min-width: 0; padding-right: 0.5rem;">
+                <div class="track-title-text" style="font-weight: ${isCurrent ? '700' : '500'}; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: ${isCurrent ? '#ffffff' : 'var(--text-bright)'};" title="${escapeHtml(t.title)}">
+                  ${escapeHtml(t.title)}
+                  ${isCurrent ? `<span class="playing-now-pill"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style="margin-right:2px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> NOW PLAYING</span>` : ''}
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${escapeHtml(t.artist || '')} ${t.artist ? '&bull;' : ''} ${formatDuration(t.duration)} ${t.requester ? `&bull; Added by ${escapeHtml(t.requester)}` : ''}
+                </div>
               </div>
-              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                ${escapeHtml(t.artist || '')} &bull; ${formatDuration(t.duration)} ${t.requester ? `&bull; Added by ${escapeHtml(t.requester)}` : ''}
-              </div>
-            </div>
-            ${canControl ? `
               <div class="queue-btn-group">
-                <button class="btn btn-primary btn-sm queue-action-btn btn-queue-play" data-index="${idx}" title="Play Track Now">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <button class="btn btn-sm queue-action-btn btn-queue-save" data-index="${idx}" title="Save to Local Playlist">
+                  💾
                 </button>
-                <button class="btn btn-sm queue-action-btn btn-move" data-from="${idx}" data-to="${idx - 1}" title="Move Up" ${idx === 0 ? 'disabled style="opacity: 0.15; cursor: default;"' : ''}>&uarr;</button>
-                <button class="btn btn-sm queue-action-btn btn-move" data-from="${idx}" data-to="${idx + 1}" title="Move Down" ${idx === upcoming.length - 1 ? 'disabled style="opacity: 0.15; cursor: default;"' : ''}>&darr;</button>
-                <button class="btn btn-danger btn-sm queue-action-btn btn-remove" data-index="${idx}" title="Remove Track">&times;</button>
+                ${canControl ? `
+                  <button class="btn ${isCurrent ? 'btn-secondary' : 'btn-primary'} btn-sm queue-action-btn btn-queue-play" data-index="${idx}" title="${isCurrent ? 'Currently Playing' : 'Play Track Now'}" ${isCurrent ? 'disabled style="opacity: 0.35; cursor: default;"' : ''}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  </button>
+                  <button class="btn btn-sm queue-action-btn btn-move" data-from="${idx}" data-to="${idx - 1}" title="Move Up" ${idx === 0 ? 'disabled style="opacity: 0.15; cursor: default;"' : ''}>&uarr;</button>
+                  <button class="btn btn-sm queue-action-btn btn-move" data-from="${idx}" data-to="${idx + 1}" title="Move Down" ${idx === tracks.length - 1 ? 'disabled style="opacity: 0.15; cursor: default;"' : ''}>&darr;</button>
+                  <button class="btn btn-danger btn-sm queue-action-btn btn-remove" data-index="${idx}" title="Remove Track">&times;</button>
+                ` : ''}
               </div>
-            ` : ''}
-          </li>
-        `).join('')}
+            </li>
+          `;
+        }).join('')}
       </ul>
     `;
 
@@ -909,8 +1071,8 @@ export async function render(container, state) {
           draggedIdx = null;
 
           // Optimistic local update
-          const moved = upcoming.splice(from, 1)[0];
-          upcoming.splice(to, 0, moved);
+          const moved = tracks.splice(from, 1)[0];
+          tracks.splice(to, 0, moved);
           renderQueue();
 
           try {
@@ -923,6 +1085,14 @@ export async function render(container, state) {
       });
     }
 
+    for (const btn of queueContainer.querySelectorAll('.btn-queue-save')) {
+      btn.onclick = () => {
+        const index = Number(btn.getAttribute('data-index'));
+        const track = tracks.find(t => t.index === index) || tracks[index];
+        if (track) promptSaveToPlaylist(track);
+      };
+    }
+
     for (const btn of queueContainer.querySelectorAll('.btn-remove')) {
       btn.onclick = async () => {
         const index = Number(btn.getAttribute('data-index'));
@@ -933,7 +1103,7 @@ export async function render(container, state) {
       };
     }
 
-    for (const btn of queueContainer.querySelectorAll('.btn-queue-play')) {
+    for (const btn of queueContainer.querySelectorAll('.btn-queue-play:not([disabled])')) {
       btn.onclick = async () => {
         const index = Number(btn.getAttribute('data-index'));
         btn.disabled = true;

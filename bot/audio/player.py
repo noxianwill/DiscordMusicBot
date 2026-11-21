@@ -524,19 +524,17 @@ class GuildPlayer:
             logger.info(f"Returning to previous track: '{prev_track.title}' in {self.guild_str}")
             await self.play_track(prev_track)
 
-    async def jump_to_queue_index(self, upcoming_idx: int) -> Optional[AudioTrack]:
-        """Jumps directly to play a track from the upcoming queue."""
-        offset = (self.queue.current_index + 1) if self.queue.current_index >= 0 else 0
-        actual_idx = offset + upcoming_idx
+    async def jump_to_queue_index(self, target_idx: int) -> Optional[AudioTrack]:
+        """Jumps directly to play a track from the queue by its absolute index."""
         target_track = None
         async with self.queue._lock:
-            if 0 <= actual_idx < len(self.queue._tracks):
-                self.queue.current_index = actual_idx
-                target_track = self.queue._tracks[actual_idx]
+            if 0 <= target_idx < len(self.queue._tracks):
+                self.queue.current_index = target_idx
+                target_track = self.queue._tracks[target_idx]
             else:
                 return None
 
-        logger.info(f"Jumping to queue index #{upcoming_idx + 1} (actual {actual_idx}): '{target_track.title}' in {self.guild_str}")
+        logger.info(f"Jumping to queue index #{target_idx + 1}: '{target_track.title}' in {self.guild_str}")
         await self.play_track(target_track)
         return target_track
 

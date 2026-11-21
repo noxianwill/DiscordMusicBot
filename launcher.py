@@ -660,6 +660,7 @@ class BotLauncher:
             "tracks.delete": self._launcher_tracks_delete,
             "playlists.import_youtube": self._launcher_playlists_import_youtube,
             "playlists.inspect_youtube": self._launcher_playlists_inspect_youtube,
+            "playlists.save_track": self._launcher_playlists_save_track,
             "upload.begin": self._launcher_upload_begin,
             "upload.end": self._launcher_upload_end,
             "upload.abort": self._launcher_upload_abort,
@@ -669,7 +670,7 @@ class BotLauncher:
             # Permissions check for launcher actions (§4 table)
             # bot.status requires user in any guild or owner.
             # All other launcher actions require owner.
-            if action != "bot.status" and not self.is_owner(user_id):
+            if action not in ("bot.status", "playlists.save_track") and not self.is_owner(user_id):
                 await self.send_panel({
                     "t": "res",
                     "id": req_id,
@@ -1248,6 +1249,44 @@ class BotLauncher:
         target_dir.mkdir(parents=True, exist_ok=True)
         asyncio.create_task(self._run_youtube_import(clean_urls, target_dir, pl_name))
         return {"ok": True, "data": {"playlist": pl_name, "count": len(clean_urls), "message": f"Import of {len(clean_urls)} items started in background"}}
+
+    async def _launcher_playlists_save_track(self, user_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        pl_name = str(params.get("playlist", "")).strip()
+        url = str(params.get("url", "")).strip()
+        title = str(params.get("title", "")).strip()
+        artist = str(params.get("artist", "")).strip()
+
+        if not pl_name:
+            return {"ok": False, "code": "BAD_REQUEST", "error": "Playlist name is required"}
+        if not url and not title:
+            return {"ok": False, "code": "BAD_REQUEST", "error": "Track URL or title is required"}
+
+        try:
+            target_dir = self._safe_playlist_path(pl_name)
+        except ValueError as e:
+            return {"ok": False, "code": "BAD_REQUEST", "error": str(e)}
+
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        download_target = url
+        if not (download_target.startswith("http://") or download_target.startswith("https://")):
+            search_term = f"{artist} - {title}".strip(" -") if (artist and title) else (title or download_target)
+            download_target = f"ytsearch1:{search_term}"
+
+        # If it's a local file on this machine, copy directly
+        if Path(download_target).exists() and Path(download_target).is_file():
+            src_file = Path(download_target)
+            dest_file = target_dir / src_file.name
+            try:
+                dest_file.write_bytes(src_file.read_bytes())
+                await self._notify_playlists_reload()
+                return {"ok": True, "data": {"playlist": pl_name, "title": title or src_file.stem, "message": f"Track saved to '{pl_name}'"}}
+            except Exception as e:
+                return {"ok": False, "code": "IO_ERROR", "error": f"Failed to copy file: {e}"}
+
+        # Background download with yt-dlp (YouTube, SoundCloud, Spotify via YouTube)
+        asyncio.create_task(self._run_youtube_import([download_target], target_dir, pl_name))
+        return {"ok": True, "data": {"playlist": pl_name, "title": title or "Track", "message": f"Saving '{title or 'track'}' to '{pl_name}' in background..."}}
 
     async def _run_youtube_import(self, urls: List[str], target_dir: Path, playlist_name: str):
         logger.info(f"Starting YouTube import into playlist '{playlist_name}': {len(urls)} items")
