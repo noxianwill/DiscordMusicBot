@@ -540,10 +540,13 @@ class ControlApiCog(commands.Cog):
                     return {"ok": False, "code": "NOT_FOUND", "error": "Could not extract tracks from Spotify link"}
                 
                 if len(spotify_tracks) == 1:
+                    s_first = spotify_tracks[0]
                     track = await player.play_youtube(
-                        spotify_tracks[0]["query"],
+                        s_first["query"],
                         requester_id=user_id,
-                        requester_name=requester_name
+                        requester_name=requester_name,
+                        override_title=s_first.get("title"),
+                        override_artist=s_first.get("artist")
                     )
                     return {
                         "ok": True,
@@ -561,7 +564,9 @@ class ControlApiCog(commands.Cog):
                             await player.play_youtube(
                                 s_item["query"],
                                 requester_id=user_id,
-                                requester_name=requester_name
+                                requester_name=requester_name,
+                                override_title=s_item.get("title"),
+                                override_artist=s_item.get("artist")
                             )
                             count += 1
                         except Exception:

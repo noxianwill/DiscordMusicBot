@@ -152,14 +152,17 @@ class PlaybackCog(commands.Cog):
                     return await interaction.followup.send("❌ Could not extract tracks from this Spotify URL.")
                 
                 if len(spotify_tracks) == 1:
-                    resolved_query = spotify_tracks[0]["query"]
+                    s_first = spotify_tracks[0]
+                    resolved_query = s_first["query"]
                     track = await player.play_youtube(
                         resolved_query,
                         requester_id=interaction.user.id,
-                        requester_name=interaction.user.display_name
+                        requester_name=interaction.user.display_name,
+                        override_title=s_first.get("title"),
+                        override_artist=s_first.get("artist")
                     )
                     embed = EmbedFactory.track_added(track)
-                    embed.set_footer(text=f"Matched from Spotify: {spotify_tracks[0]['title']} • Requested by {interaction.user.display_name}")
+                    embed.set_footer(text=f"Matched from Spotify: {s_first['title']} • Requested by {interaction.user.display_name}")
                     return await interaction.followup.send(embed=embed)
                 else:
                     queued_count = 0
@@ -168,7 +171,9 @@ class PlaybackCog(commands.Cog):
                             await player.play_youtube(
                                 s_item["query"],
                                 requester_id=interaction.user.id,
-                                requester_name=interaction.user.display_name
+                                requester_name=interaction.user.display_name,
+                                override_title=s_item.get("title"),
+                                override_artist=s_item.get("artist")
                             )
                             queued_count += 1
                         except Exception as q_err:
@@ -440,6 +445,43 @@ class PlaybackCog(commands.Cog):
             await player.play(track)
             embed = EmbedFactory.track_added(track)
             return await ctx.send(embed=embed)
+
+        # Check if query is a Spotify URL
+        if is_spotify_url(query):
+            try:
+                spotify_tracks = await SpotifyResolver.resolve(query)
+                if not spotify_tracks:
+                    return await ctx.send("❌ Could not extract tracks from this Spotify URL.")
+                if len(spotify_tracks) == 1:
+                    s_first = spotify_tracks[0]
+                    track = await player.play_youtube(
+                        s_first["query"],
+                        requester_id=ctx.author.id,
+                        requester_name=ctx.author.display_name,
+                        override_title=s_first.get("title"),
+                        override_artist=s_first.get("artist")
+                    )
+                    embed = EmbedFactory.track_added(track)
+                    embed.set_footer(text=f"Matched from Spotify: {s_first['title']} • Requested by {ctx.author.display_name}")
+                    return await ctx.send(embed=embed)
+                else:
+                    queued_count = 0
+                    for s_item in spotify_tracks:
+                        try:
+                            await player.play_youtube(
+                                s_item["query"],
+                                requester_id=ctx.author.id,
+                                requester_name=ctx.author.display_name,
+                                override_title=s_item.get("title"),
+                                override_artist=s_item.get("artist")
+                            )
+                            queued_count += 1
+                        except Exception as q_err:
+                            logger.warning(f"Error queueing Spotify item {s_item['title']}: {q_err}")
+                    return await ctx.send(f"✅ Added **{queued_count}** tracks from Spotify collection to queue.")
+            except Exception as e:
+                logger.error(f"Error resolving Spotify link: {e}")
+                return await ctx.send(f"❌ Error processing Spotify link: {e}")
 
         # YouTube playback via yt-dlp / API
         try:

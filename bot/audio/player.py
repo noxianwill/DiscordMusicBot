@@ -508,13 +508,13 @@ class GuildPlayer:
         self.queue.loop_mode = mode
         logger.info(f"Loop mode changed to {mode.name} in {self.guild_str}")
 
-    async def play_youtube(self, query: str, requester_id: int, requester_name: str) -> AudioTrack:
+    async def play_youtube(self, query: str, requester_id: int, requester_name: str, override_title: Optional[str] = None, override_artist: Optional[str] = None) -> AudioTrack:
         """Searches or extracts a YouTube video and adds it to the queue."""
         info = await self._extract_youtube_url(query)
         
         track = AudioTrack(
-            title=info.get('title', 'Unknown Title'),
-            artist=info.get('uploader'),
+            title=override_title or info.get('title', 'Unknown Title'),
+            artist=override_artist or info.get('uploader'),
             duration=float(info.get('duration', 0)) if info.get('duration') else None,
             source_type=SourceType.YOUTUBE,
             source_uri=info.get('webpage_url', query),
