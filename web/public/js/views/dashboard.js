@@ -210,6 +210,7 @@ export async function render(container, state) {
     const inVoice = Boolean(currentGuildState?.voiceChannel);
     const vcName = currentGuildState?.voiceChannel?.name || '';
     const vcId = currentGuildState?.voiceChannel?.id || '';
+    const voiceStats = currentGuildState?.voiceStats;
     const canLeave = isAdminOrAbove();
     const canSwitch = isDjOrAbove();
     const mode = inVoice ? 'connected' : (canSwitch ? 'joinable' : 'idle');
@@ -225,7 +226,8 @@ export async function render(container, state) {
 
     // Compute a state fingerprint
     const channelsSig = voiceChannels.map(c => `${c.id}:${c.userIsHere ? 1 : 0}:${c.memberCount}`).join('|');
-    const currentVoiceStateKey = `${mode}:${vcId}:${canLeave ? '1' : '0'}:${canSwitch ? '1' : '0'}:${channelsSig}`;
+    const vsSig = voiceStats ? `${voiceStats.region}:${voiceStats.latencyMs}:${voiceStats.isOptimal}` : '';
+    const currentVoiceStateKey = `${mode}:${vcId}:${canLeave ? '1' : '0'}:${canSwitch ? '1' : '0'}:${vsSig}:${channelsSig}`;
 
     // If state hasn't changed at all, no-op
     if (!force && currentVoiceStateKey === lastVoiceStateKey) {
@@ -259,6 +261,17 @@ export async function render(container, state) {
             <span class="voice-pulse"></span>
             <span>Connected: <strong>${escapeHtml(vcName)}</strong></span>
           </div>
+          ${voiceStats?.region ? `
+            <div class="badge" style="font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; background: rgba(87, 242, 135, 0.15); color: var(--success); cursor: help;" title="Connected to Discord voice server: ${escapeHtml(voiceStats.endpoint || voiceStats.region)} (Audio Ping: ${voiceStats.latencyMs ? voiceStats.latencyMs + 'ms' : 'low'})">
+              <span>📍 ${escapeHtml(voiceStats.region)}</span>
+              ${voiceStats.latencyMs ? `<span>• <strong>${Math.round(voiceStats.latencyMs)}ms</strong></span>` : ''}
+            </div>
+          ` : ''}
+          ${voiceStats?.canOptimize && !voiceStats?.isOptimal ? `
+            <button id="btn-optimize-vc" class="btn btn-sm btn-outline" style="font-size: 11px; padding: 2.5px 8px; border-color: rgba(88, 101, 242, 0.4); color: #a5b3f7; display: inline-flex; align-items: center; gap: 4px;" title="Set voice channel region to Frankfurt (0-5ms ping to bot)">
+              ⚡ Optimize to Frankfurt
+            </button>
+          ` : ''}
           ${canSwitch ? `
             <select id="voice-select" class="form-select" style="min-width: 160px; max-width: 210px;" title="Switch voice channel">
               <option value="">Switch channel...</option>
@@ -278,6 +291,22 @@ export async function render(container, state) {
           ` : ''}
         </div>
       `;
+
+      const btnOptimize = vcContainer.querySelector('#btn-optimize-vc');
+      if (btnOptimize) {
+        btnOptimize.onclick = async () => {
+          btnOptimize.disabled = true;
+          btnOptimize.textContent = 'Optimizing...';
+          try {
+            await api.rpc('voice.optimize', { region: 'frankfurt' });
+            showToast('Voice channel region optimized to Frankfurt!', 'success');
+          } catch (err) {
+            showToast(`Optimization failed: ${err.message}`, 'error');
+            btnOptimize.disabled = false;
+            btnOptimize.textContent = '⚡ Optimize to Frankfurt';
+          }
+        };
+      }
 
       const voiceSelect = vcContainer.querySelector('#voice-select');
       if (voiceSelect) {

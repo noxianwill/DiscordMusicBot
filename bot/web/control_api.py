@@ -63,6 +63,7 @@ ACTION_MIN_TIERS = {
     'playlists.list': 1,
     'playlists.get': 1,
     'lyrics.get': 1,
+    'voice.optimize': 2,
     'leave': 3,
     'playlists.reload': 3,
 }
@@ -368,10 +369,31 @@ class ControlApiCog(commands.Cog):
         vc = guild.voice_client
 
         voice_channel = None
+        voice_stats = None
         if vc and getattr(vc, 'channel', None):
             voice_channel = {
                 "id": str(vc.channel.id),
                 "name": vc.channel.name
+            }
+            ep = getattr(vc, 'endpoint', '') or ''
+            sr = ep.split('.')[0] if '.' in ep else ep
+            clean_reg = re.sub(r'\d+$', '', sr).title() or "Europe"
+            v_lat = None
+            if hasattr(vc, 'average_latency') and vc.average_latency is not None and not math.isinf(vc.average_latency):
+                v_lat = round(vc.average_latency * 1000, 1)
+            elif hasattr(vc, 'latency') and vc.latency is not None and not math.isinf(vc.latency):
+                v_lat = round(vc.latency * 1000, 1)
+
+            can_manage = vc.channel.permissions_for(guild.me).manage_channels
+            rtc_reg = getattr(vc.channel, 'rtc_region', None)
+            is_optimal = (rtc_reg == 'frankfurt') or clean_reg.lower().startswith('frankfurt')
+            voice_stats = {
+                "latencyMs": v_lat,
+                "endpoint": ep,
+                "region": clean_reg,
+                "rtcRegion": rtc_reg,
+                "canOptimize": can_manage,
+                "isOptimal": is_optimal
             }
 
         is_playing = (player.state == PlayerState.PLAYING) if player else False
@@ -430,6 +452,7 @@ class ControlApiCog(commands.Cog):
 
         return {
             "voiceChannel": voice_channel,
+            "voiceStats": voice_stats,
             "isPlaying": is_playing,
             "isPaused": is_paused,
             "current": current_data,
@@ -479,12 +502,36 @@ class ControlApiCog(commands.Cog):
             if not target_channel or not isinstance(target_channel, discord.VoiceChannel):
                 return {"ok": False, "code": "NOT_FOUND", "error": "Voice channel not found"}
 
+        # Auto-optimize region to Frankfurt (0-5ms ping) if bot has permission
+        if target_channel.permissions_for(guild.me).manage_channels:
+            if getattr(target_channel, 'rtc_region', None) != 'frankfurt':
+                try:
+                    await target_channel.edit(rtc_region='frankfurt', reason='Auto-optimized for lowest bot latency (Frankfurt)')
+                    logger.info(f"Auto-optimized voice channel '{target_channel.name}' to Frankfurt region")
+                except Exception as e:
+                    logger.debug(f"Could not set rtc_region: {e}")
+
         if guild.voice_client:
             await guild.voice_client.move_to(target_channel)
         else:
             await target_channel.connect(self_deaf=True)
 
         return {"ok": True, "data": {"channelId": str(target_channel.id), "name": target_channel.name}}
+
+    async def _action_voice_optimize(self, user_id: int, guild: discord.Guild, params: Dict[str, Any], tier: str) -> Dict[str, Any]:
+        vc = guild.voice_client
+        if not vc or not vc.channel:
+            return {"ok": False, "code": "NOT_IN_VOICE", "error": "Bot is not connected to a voice channel"}
+        channel = vc.channel
+        if not channel.permissions_for(guild.me).manage_channels:
+            return {"ok": False, "code": "FORBIDDEN", "error": "Bot lacks 'Manage Channels' permission to change voice region"}
+        region = str(params.get("region", "frankfurt")).lower().strip()
+        try:
+            await channel.edit(rtc_region=region, reason="Voice region optimized via dashboard")
+            logger.info(f"Voice channel '{channel.name}' region optimized to '{region}' by user {user_id}")
+            return {"ok": True, "data": {"region": region, "channel": channel.name}}
+        except Exception as e:
+            return {"ok": False, "code": "ERROR", "error": str(e)}
 
     async def _action_leave(self, user_id: int, guild: discord.Guild, params: Dict[str, Any], tier: str) -> Dict[str, Any]:
         if guild.voice_client:
@@ -1002,10 +1049,30 @@ class ControlApiCog(commands.Cog):
                             lat = round(self.bot.latency * 1000, 1)
                     except Exception:
                         pass
+
+                    voice_lat = None
+                    voice_reg = None
+                    try:
+                        for g in self.bot.guilds:
+                            if g.voice_client and g.voice_client.is_connected():
+                                vclient = g.voice_client
+                                if hasattr(vclient, 'average_latency') and vclient.average_latency is not None and not math.isinf(vclient.average_latency):
+                                    voice_lat = round(vclient.average_latency * 1000, 1)
+                                elif hasattr(vclient, 'latency') and vclient.latency is not None and not math.isinf(vclient.latency):
+                                    voice_lat = round(vclient.latency * 1000, 1)
+                                ep = getattr(vclient, 'endpoint', '') or ''
+                                sr = ep.split('.')[0] if '.' in ep else ep
+                                voice_reg = re.sub(r'\d+$', '', sr).title() or "Europe"
+                                break
+                    except Exception:
+                        pass
+
                     self._broadcast_event({
                         "kind": "ping",
                         "data": {
-                            "latencyMs": lat
+                            "latencyMs": lat,
+                            "voiceLatencyMs": voice_lat,
+                            "voiceRegion": voice_reg
                         }
                     })
 

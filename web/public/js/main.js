@@ -69,7 +69,7 @@ async function init() {
     connectWebSocket();
     addWsListener((evt) => {
       if (evt.kind === 'ping' && evt.data?.latencyMs !== undefined) {
-        updateDiscordLatency(evt.data.latencyMs);
+        updateDiscordLatency(evt.data.latencyMs, evt.data.voiceLatencyMs, evt.data.voiceRegion);
       } else if (evt.kind === 'web_ping' && evt.data?.rttMs !== undefined) {
         updateWebLatency(evt.data.rttMs);
       } else if (evt.kind === 'lifecycle') {
@@ -100,20 +100,29 @@ function applyLatencyStyle(elBadge, val) {
   }
 }
 
-function updateDiscordLatency(ms) {
+function updateDiscordLatency(gatewayMs, voiceMs, voiceRegion) {
   const elBadge = document.getElementById('header-discord-latency');
   const elVal = document.getElementById('header-discord-lat-val');
+  const elLabel = document.getElementById('header-discord-lat-label');
   if (!elBadge || !elVal) return;
 
-  if (ms === null || ms === undefined || isNaN(ms)) {
+  if (voiceMs !== null && voiceMs !== undefined && !isNaN(voiceMs)) {
+    const val = Math.round(voiceMs);
+    elVal.textContent = String(val);
+    if (elLabel) elLabel.textContent = 'Voice:';
+    elBadge.title = `Discord Voice Audio: ${val}ms (${voiceRegion || 'Europe'}) | Gateway: ${Math.round(gatewayMs || 120)}ms (US API) | Host: Frankfurt 🇩🇪`;
+    elBadge.style.display = 'inline-flex';
+    applyLatencyStyle(elBadge, val);
+  } else if (gatewayMs !== null && gatewayMs !== undefined && !isNaN(gatewayMs)) {
+    const val = Math.round(gatewayMs);
+    elVal.textContent = String(val);
+    if (elLabel) elLabel.textContent = 'Bot:';
+    elBadge.title = `Discord Gateway Heartbeat: ${val}ms (US-East API) | Connect to voice for local EU ping (~5ms) | Host: Frankfurt 🇩🇪`;
+    elBadge.style.display = 'inline-flex';
+    applyLatencyStyle(elBadge, val);
+  } else {
     elVal.textContent = '--';
-    return;
   }
-
-  const val = Math.round(ms);
-  elVal.textContent = String(val);
-  elBadge.style.display = 'inline-flex';
-  applyLatencyStyle(elBadge, val);
 }
 
 function updateWebLatency(ms) {
@@ -172,9 +181,9 @@ function renderShell() {
               <span style="font-size: 11px; color: var(--text-muted);">v${escapeHtml(bot?.version || '1.0.0')}</span>
             </div>
             <div class="header-latencies" style="display: flex; align-items: center; gap: 5px; margin-top: 4px; flex-wrap: wrap;">
-              <span id="header-discord-latency" class="badge" style="font-size: 10px; font-weight: 600; padding: 1.5px 5.5px; border-radius: 4px; display: ${botState === 'running' ? 'inline-flex' : 'none'}; align-items: center; gap: 3.5px; background: rgba(87, 242, 135, 0.15); color: var(--success); cursor: help;" title="Bot ⟷ Discord: Heartbeat latency between the bot and Discord voice servers">
+              <span id="header-discord-latency" class="badge" style="font-size: 10px; font-weight: 600; padding: 1.5px 5.5px; border-radius: 4px; display: ${botState === 'running' ? 'inline-flex' : 'none'}; align-items: center; gap: 3.5px; background: rgba(87, 242, 135, 0.15); color: var(--success); cursor: help;" title="Discord Ping (Voice & Gateway)">
                 <span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: currentColor;"></span>
-                <span>Bot: <strong id="header-discord-lat-val">${initialLat !== null ? initialLat : '--'}</strong>ms</span>
+                <span><span id="header-discord-lat-label">Bot:</span> <strong id="header-discord-lat-val">${initialLat !== null ? initialLat : '--'}</strong>ms</span>
               </span>
               <span id="header-web-latency" class="badge" style="font-size: 10px; font-weight: 600; padding: 1.5px 5.5px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3.5px; background: rgba(88, 101, 242, 0.15); color: #a5b3f7; cursor: help;" title="You ⟷ Web UI: Live round-trip ping between your browser and this web panel">
                 <span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: currentColor;"></span>

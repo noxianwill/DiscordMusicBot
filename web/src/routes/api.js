@@ -22,7 +22,7 @@ const ALLOWED_RPC_ACTIONS = new Set([
   'play', 'play.local',
   'pause', 'resume', 'stop', 'skip', 'previous', 'restart', 'seek', 'volume', 'loop',
   'queue.get', 'queue.play', 'queue.remove', 'queue.move', 'queue.clear', 'queue.shuffle',
-  'history', 'playlists.list', 'playlists.get', 'playlists.reload', 'lyrics.get'
+  'history', 'playlists.list', 'playlists.get', 'playlists.reload', 'lyrics.get', 'voice.optimize'
 ]);
 
 const rpcSchema = z.object({

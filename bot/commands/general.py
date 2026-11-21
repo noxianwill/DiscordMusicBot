@@ -3,6 +3,8 @@ General Discord commands: about, help, ping.
 """
 
 import time
+import math
+import re
 import logging
 from typing import Optional
 
@@ -87,16 +89,87 @@ class GeneralCog(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="ping", description="Show bot latency")
+    @app_commands.command(name="ping", description="Show bot latency and region")
     async def ping(self, interaction: discord.Interaction):
-        """Show bot WebSocket heartbeat latency."""
-        latency = round(self.bot.latency * 1000)
+        """Show bot WebSocket heartbeat latency and active voice latency."""
+        gw_lat = round(self.bot.latency * 1000)
+        vc = interaction.guild.voice_client if interaction.guild else None
+        v_lat = None
+        region_str = ""
+        if vc and vc.is_connected():
+            if hasattr(vc, 'average_latency') and vc.average_latency is not None and not math.isinf(vc.average_latency):
+                v_lat = round(vc.average_latency * 1000)
+            elif hasattr(vc, 'latency') and vc.latency is not None and not math.isinf(vc.latency):
+                v_lat = round(vc.latency * 1000)
+            ep = getattr(vc, 'endpoint', '') or ''
+            sr = ep.split('.')[0] if '.' in ep else ep
+            clean_reg = re.sub(r'\d+$', '', sr).title()
+            if clean_reg:
+                region_str = f" ({clean_reg} 🇪🇺)"
+
+        lines = [f"📡 **Discord Gateway:** `{gw_lat}ms` *(US-East API)*"]
+        if v_lat is not None:
+            lines.append(f"🔊 **Voice Audio:** `{v_lat}ms`*{region_str}*")
+        lines.append(f"📍 **Bot Host Location:** `Frankfurt, Germany 🇩🇪`")
+
         embed = discord.Embed(
             title="🏓 Pong!",
-            description=f"Latency: **{latency}ms**",
+            description="\n".join(lines),
             color=discord.Color.green()
         )
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="region", description="Check or optimize the voice channel region to closest server (Frankfurt)")
+    @app_commands.describe(region="Voice region (e.g. frankfurt, rotterdam, or auto)")
+    async def region(self, interaction: discord.Interaction, region: Optional[str] = None):
+        """Check or set the voice channel region."""
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+            return
+
+        member = interaction.guild.get_member(interaction.user.id)
+        vc_channel = member.voice.channel if (member and member.voice) else None
+        if not vc_channel:
+            bot_vc = interaction.guild.voice_client
+            vc_channel = bot_vc.channel if (bot_vc and bot_vc.channel) else None
+
+        if not vc_channel:
+            await interaction.response.send_message("You or the bot must be in a voice channel.", ephemeral=True)
+            return
+
+        if not region or region.lower() in ("check", "status"):
+            current_rtc = getattr(vc_channel, 'rtc_region', None) or "Automatic"
+            bot_vc = interaction.guild.voice_client
+            active_ep = getattr(bot_vc, 'endpoint', 'None') if bot_vc else 'Not connected'
+            embed = discord.Embed(
+                title="📍 Voice Channel Region",
+                description=(
+                    f"**Channel:** {vc_channel.name}\n"
+                    f"**Configured Region:** `{current_rtc}`\n"
+                    f"**Active Voice Server:** `{active_ep}`\n"
+                    f"**Recommended Closest Region:** `frankfurt` (bot is hosted in Frankfurt 🇩🇪)"
+                ),
+                color=discord.Color.blue()
+            )
+            await interaction.response.send_message(embed=embed)
+            return
+
+        target_reg = None if region.lower() in ("auto", "automatic", "none") else region.lower()
+        if not vc_channel.permissions_for(interaction.guild.me).manage_channels:
+            await interaction.response.send_message("❌ The bot lacks `Manage Channels` permission to change the voice region.", ephemeral=True)
+            return
+
+        try:
+            await vc_channel.edit(rtc_region=target_reg, reason=f"Region changed by {interaction.user.display_name}")
+            reg_display = target_reg or "Automatic"
+            embed = discord.Embed(
+                title="⚡ Voice Region Updated",
+                description=f"Voice channel **{vc_channel.name}** region set to **`{reg_display}`**.\nReconnecting for lowest latency...",
+                color=discord.Color.green()
+            )
+            await interaction.response.send_message(embed=embed)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Failed to set region: {e}", ephemeral=True)
 
     # =========================================================
     # Prefix Commands (!about, !help, !ping)
@@ -171,10 +244,29 @@ class GeneralCog(commands.Cog):
     @commands.command(name="ping")
     async def ping_prefix(self, ctx: commands.Context):
         """Show bot WebSocket heartbeat latency (!ping)."""
-        latency = round(self.bot.latency * 1000)
+        gw_lat = round(self.bot.latency * 1000)
+        vc = ctx.guild.voice_client if ctx.guild else None
+        v_lat = None
+        region_str = ""
+        if vc and vc.is_connected():
+            if hasattr(vc, 'average_latency') and vc.average_latency is not None and not math.isinf(vc.average_latency):
+                v_lat = round(vc.average_latency * 1000)
+            elif hasattr(vc, 'latency') and vc.latency is not None and not math.isinf(vc.latency):
+                v_lat = round(vc.latency * 1000)
+            ep = getattr(vc, 'endpoint', '') or ''
+            sr = ep.split('.')[0] if '.' in ep else ep
+            clean_reg = re.sub(r'\d+$', '', sr).title()
+            if clean_reg:
+                region_str = f" ({clean_reg} 🇪🇺)"
+
+        lines = [f"📡 **Discord Gateway:** `{gw_lat}ms` *(US-East API)*"]
+        if v_lat is not None:
+            lines.append(f"🔊 **Voice Audio:** `{v_lat}ms`*{region_str}*")
+        lines.append(f"📍 **Bot Host Location:** `Frankfurt, Germany 🇩🇪`")
+
         embed = discord.Embed(
             title="🏓 Pong!",
-            description=f"Latency: **{latency}ms**",
+            description="\n".join(lines),
             color=discord.Color.green()
         )
         await ctx.send(embed=embed)
