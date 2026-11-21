@@ -788,7 +788,10 @@ export async function render(container, state) {
               </div>
             </div>
             ${canControl ? `
-              <div style="display: flex; gap: 0.25rem;">
+              <div style="display: flex; gap: 0.25rem; align-items: center;">
+                <button class="btn btn-primary btn-sm btn-queue-play" data-index="${idx}" title="Play Track Now" style="padding: 2px 8px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
                 ${idx > 0 ? `<button class="btn btn-sm btn-move" data-from="${idx}" data-to="${idx - 1}" title="Move Up">&uarr;</button>` : ''}
                 ${idx < upcoming.length - 1 ? `<button class="btn btn-sm btn-move" data-from="${idx}" data-to="${idx + 1}" title="Move Down">&darr;</button>` : ''}
                 <button class="btn btn-danger btn-sm btn-remove" data-index="${idx}" title="Remove Track">&times;</button>
@@ -870,6 +873,20 @@ export async function render(container, state) {
           await api.rpc('queue.remove', selectedGuildId, { index });
           await refreshData();
         } catch (_) { }
+      };
+    }
+
+    for (const btn of queueContainer.querySelectorAll('.btn-queue-play')) {
+      btn.onclick = async () => {
+        const index = Number(btn.getAttribute('data-index'));
+        btn.disabled = true;
+        btn.innerHTML = '&#8987;';
+        try {
+          await api.rpc('queue.play', selectedGuildId, { index });
+          await refreshData();
+        } catch (_) {
+          await refreshData();
+        }
       };
     }
 

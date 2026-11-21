@@ -355,6 +355,7 @@ YouTube's SPA desktop website runs continuous client-side JavaScript that invali
 | `/queue shuffle` | `!shuffle` | Randomize order of upcoming tracks | DJ / Admin |
 | `/queue remove <index>`| `!remove <index>` | Remove a specific track from queue | DJ / Admin |
 | `/queue move <from> <to>`| `!move <from> <to>` | Move track position in queue | DJ / Admin |
+| `/queue jump <position>`| `!jump <position>` (`!skipto`) | Immediately jump and play track at queue position | DJ / Admin |
 | `/queue clear` | `!clear` | Clear all upcoming tracks from queue | DJ / Admin |
 | `/playlist play <name>` | `!playlist play <name>` | Queue an entire local playlist folder | User |
 | `/playlist list` | `!playlist list` | List all available local playlists on disk | User |

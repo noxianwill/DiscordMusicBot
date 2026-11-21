@@ -136,6 +136,20 @@ class QueueCog(commands.Cog):
         else:
             await interaction.response.send_message("Invalid position numbers.", ephemeral=True)
 
+    @queue_group.command(name="jump", description="Jump directly to a specific track in the upcoming queue (DJ only)")
+    @require_permission(PermissionLevel.DJ)
+    @is_in_command_channel()
+    async def jump_track(self, interaction: discord.Interaction, position: int):
+        """Jumps directly to a track at position number."""
+        if position < 1:
+            return await interaction.response.send_message("❌ Position must be 1 or higher.", ephemeral=True)
+        player = self.get_player(interaction.guild_id)
+        track = await player.jump_to_queue_index(position - 1)
+        if track:
+            await interaction.response.send_message(f"⏭️ Now playing track **#{position}**: **{track.display_title()}**")
+        else:
+            await interaction.response.send_message("❌ Invalid position number.", ephemeral=True)
+
     # =========================================================
     # Prefix Commands (!queue, !q, !clear, !shuffle)
     # =========================================================
@@ -201,6 +215,20 @@ class QueueCog(commands.Cog):
             await ctx.send(f"Moved track from position #{from_pos} to #{to_pos}.")
         else:
             await ctx.send("Invalid position numbers.")
+
+    @commands.command(name="jump", aliases=["skipto"])
+    @require_prefix_permission(PermissionLevel.DJ)
+    @is_in_prefix_command_channel()
+    async def jump_prefix(self, ctx: commands.Context, position: int):
+        """Jumps directly to a track at position number in queue (!jump <position>)."""
+        if position < 1:
+            return await ctx.send("❌ Position must be 1 or higher.")
+        player = self.get_player(ctx.guild.id)
+        track = await player.jump_to_queue_index(position - 1)
+        if track:
+            await ctx.send(f"⏭️ Now playing track **#{position}**: **{track.display_title()}**")
+        else:
+            await ctx.send("❌ Invalid position number.")
 
 
 async def setup(bot: commands.Bot):

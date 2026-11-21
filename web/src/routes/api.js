@@ -21,7 +21,7 @@ const ALLOWED_RPC_ACTIONS = new Set([
   'me', 'guild.state', 'guild.channels', 'join', 'leave',
   'play', 'play.local',
   'pause', 'resume', 'stop', 'skip', 'previous', 'restart', 'seek', 'volume', 'loop',
-  'queue.get', 'queue.remove', 'queue.move', 'queue.clear', 'queue.shuffle',
+  'queue.get', 'queue.play', 'queue.remove', 'queue.move', 'queue.clear', 'queue.shuffle',
   'history', 'playlists.list', 'playlists.get', 'playlists.reload', 'lyrics.get'
 ]);
 

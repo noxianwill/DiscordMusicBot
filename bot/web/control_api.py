@@ -54,6 +54,7 @@ ACTION_MIN_TIERS = {
     'volume': 2,
     'loop': 2,
     'queue.get': 1,
+    'queue.play': 2,
     'queue.remove': 2,
     'queue.move': 2,
     'queue.clear': 2,
@@ -801,6 +802,18 @@ class ControlApiCog(commands.Cog):
                 "length": len(player.queue)
             }
         }
+
+    async def _action_queue_play(self, user_id: int, guild: discord.Guild, params: Dict[str, Any], tier: str) -> Dict[str, Any]:
+        if not guild:
+            return {"ok": False, "code": "BAD_REQUEST", "error": "Guild context required"}
+        index = int(params.get("index", -1))
+        if index < 0:
+            return {"ok": False, "code": "BAD_REQUEST", "error": "Invalid queue index"}
+        player = self.get_player(guild.id)
+        track = await player.jump_to_queue_index(index)
+        if not track:
+            return {"ok": False, "code": "NOT_FOUND", "error": "Track not found in upcoming queue"}
+        return {"ok": True, "data": {"title": track.title}}
 
     async def _action_queue_remove(self, user_id: int, guild: discord.Guild, params: Dict[str, Any], tier: str) -> Dict[str, Any]:
         index = int(params.get("index", -1))
