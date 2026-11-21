@@ -811,3 +811,77 @@ input[type="range"]:focus {
     justify-content: center;
   }
 }
+
+/* Audio Visualizer & Drag-and-Drop Queue Styles */
+.audio-spectrum {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.queue-item {
+  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.queue-item.is-dragging {
+  opacity: 0.35;
+  background: rgba(88, 101, 242, 0.15) !important;
+  border: 1px dashed var(--accent) !important;
+}
+
+.queue-item.drag-over-top {
+  border-top: 2px solid var(--accent) !important;
+}
+
+.queue-item.drag-over-bottom {
+  border-bottom: 2px solid var(--accent) !important;
+}
+
+.drag-handle {
+  cursor: grab;
+  user-select: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 0 4px;
+  transition: color 0.15s ease;
+}
+
+.drag-handle:hover {
+  color: var(--text-bright);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Karaoke / Synchronized Lyrics */
+.lyrics-drawer {
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  scrollbar-width: thin;
+}
+
+.lyric-line {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.4;
+}
+
+.lyric-line:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-normal);
+}
+
+.lyric-line.active {
+  color: #ffffff !important;
+  font-weight: 700;
+  font-size: 15.5px;
+  background: rgba(88, 101, 242, 0.22);
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+  text-shadow: 0 0 12px rgba(88, 101, 242, 0.5);
+}

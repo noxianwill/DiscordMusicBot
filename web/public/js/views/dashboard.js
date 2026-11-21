@@ -36,8 +36,11 @@ export async function render(container, state) {
   let isVoiceSelectInteracting = false;
   let pollInterval = null;
   let seekInterval = null;
+  let animFrameId = null;
   let isDraggingSeek = false;
   let localElapsed = 0;
+  let isLyricsOpen = false;
+  let lyricsCache = null;
 
   function getActiveTier() {
     if (state.me?.isOwner) return 'owner';
@@ -59,15 +62,19 @@ export async function render(container, state) {
     <!-- Top toolbar: Server Selector & Voice Channel -->
     <div class="card" style="margin-bottom: 1.5rem;">
       <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 240px;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 240px; flex-wrap: wrap;">
           <label class="form-label" style="margin: 0; white-space: nowrap; font-weight: 600;">Server:</label>
-          <select id="server-select" class="form-select" style="max-width: 280px;">
+          <select id="server-select" class="form-select" style="max-width: 260px;">
             ${guilds.map(g => `
               <option value="${escapeHtml(g.id)}" ${g.id === selectedGuildId ? 'selected' : ''}>
                 ${escapeHtml(g.name)} (${escapeHtml(g.tier)})
               </option>
             `).join('')}
           </select>
+          <button id="btn-share-listener" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;" title="Copy public link so friends can listen & watch in real-time without logging in">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            Share Live Link
+          </button>
         </div>
 
         <div id="voice-controls-bar" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -78,10 +85,15 @@ export async function render(container, state) {
 
     <!-- Play input box -->
     <div class="card">
-      <div class="card-title">Add Music</div>
+      <div class="card-title">
+        <span>Add Music</span>
+        <div style="display: flex; gap: 0.35rem; align-items: center; font-size: 11px; color: var(--text-muted);">
+          <span>Supports: YouTube &bull; Spotify &bull; SoundCloud</span>
+        </div>
+      </div>
       <form id="play-form" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 260px; position: relative;">
-          <input type="text" id="play-input" class="form-control" placeholder="Search YouTube or paste video / playlist link..." autocomplete="off">
+          <input type="text" id="play-input" class="form-control" placeholder="Search song, or paste YouTube, Spotify, or SoundCloud link..." autocomplete="off">
           <span id="query-type-badge" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--text-muted); background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px;">Search</span>
         </div>
         <button type="submit" id="btn-play-submit" class="btn btn-primary" style="min-width: 100px;">
@@ -103,7 +115,10 @@ export async function render(container, state) {
       <!-- Queue & History Card -->
       <div class="card">
         <div class="card-title">
-          <span>Playback Queue</span>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>Playback Queue</span>
+            <span id="queue-header-summary" style="font-size: 12px; color: var(--text-muted); font-weight: normal;"></span>
+          </div>
           <div style="display: flex; gap: 0.5rem;">
             <button id="btn-shuffle" class="btn btn-sm" title="Shuffle Queue" style="display: none;">Shuffle</button>
             <button id="btn-clear" class="btn btn-danger btn-sm" title="Clear Queue" style="display: none;">Clear</button>
@@ -117,6 +132,7 @@ export async function render(container, state) {
   `;
 
   const serverSelect = container.querySelector('#server-select');
+  const btnShareListener = container.querySelector('#btn-share-listener');
   const playInput = container.querySelector('#play-input');
   const playForm = container.querySelector('#play-form');
   const queryTypeBadge = container.querySelector('#query-type-badge');
@@ -125,17 +141,35 @@ export async function render(container, state) {
   const nowPlayingContainer = container.querySelector('#now-playing-container');
   const queueContainer = container.querySelector('#queue-container');
 
+  if (btnShareListener) {
+    btnShareListener.onclick = () => {
+      if (!selectedGuildId) return;
+      const shareUrl = `${location.origin}/#live?guild=${selectedGuildId}`;
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        showToast('Public live listener link copied to clipboard!', 'success');
+      }).catch(() => {
+        window.prompt('Copy and share this live link:', shareUrl);
+      });
+    };
+  }
+
   // Input query detection
   playInput.oninput = () => {
     const val = playInput.value.trim();
     if (!val) {
       queryTypeBadge.textContent = 'Search';
+    } else if (val.includes('spotify.com')) {
+      if (val.includes('/playlist/')) queryTypeBadge.textContent = 'Spotify Playlist';
+      else if (val.includes('/album/')) queryTypeBadge.textContent = 'Spotify Album';
+      else queryTypeBadge.textContent = 'Spotify Track';
+    } else if (val.includes('soundcloud.com')) {
+      queryTypeBadge.textContent = 'SoundCloud';
     } else if (val.includes('list=') && (val.includes('youtube.com') || val.includes('youtu.be'))) {
       queryTypeBadge.textContent = 'YouTube Playlist';
     } else if (val.includes('youtube.com') || val.includes('youtu.be')) {
       queryTypeBadge.textContent = 'YouTube Video';
     } else {
-      queryTypeBadge.textContent = 'YouTube Search';
+      queryTypeBadge.textContent = 'Search';
     }
   };
 
@@ -384,6 +418,9 @@ export async function render(container, state) {
         </div>
       </div>
 
+      <!-- Canvas Audio Spectrum Visualizer -->
+      <canvas id="dashboard-visualizer" class="audio-spectrum" height="32" style="width: 100%; border-radius: var(--radius-sm); margin: 0.75rem 0 0.5rem 0; background: rgba(0, 0, 0, 0.2); display: block;"></canvas>
+
       <!-- Progress / Seek Bar -->
       <div class="seek-wrap">
         <div class="seek-time-row">
@@ -406,13 +443,192 @@ export async function render(container, state) {
           Loop: ${escapeHtml(loopMode.toUpperCase())}
         </button>
 
+        <button id="btn-toggle-lyrics" class="btn btn-sm" title="Synchronized Karaoke Lyrics">
+          🎤 Lyrics
+        </button>
+
         <div style="display: flex; align-items: center; gap: 0.35rem; margin-left: auto;">
           <span style="font-size: 12px; color: var(--text-muted);">&#128266;</span>
           <input type="range" id="vol-slider" class="volume-slider" min="0" max="100" value="${volume}" ${!canControl ? 'disabled' : ''} title="Volume">
           <span id="vol-text" style="font-size: 11px; width: 28px; font-family: var(--font-mono);">${volume}%</span>
         </div>
       </div>
+
+      <!-- Karaoke / Synchronized Lyrics Drawer -->
+      <div id="lyrics-drawer" class="lyrics-drawer" style="display: ${isLyricsOpen ? 'block' : 'none'}; margin-top: 1rem; padding: 0.85rem; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border); border-radius: var(--radius-md); max-height: 250px; overflow-y: auto;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.35rem;">
+          <span style="font-weight: 600; font-size: 13px; color: var(--text-bright);">🎤 Synchronized Lyrics (Karaoke)</span>
+          <button id="btn-close-lyrics" class="btn btn-sm" style="padding: 2px 8px; font-size: 11px;">Close</button>
+        </div>
+        <div id="lyrics-content">
+          <p style="color: var(--text-muted); text-align: center; padding: 1.5rem 0;">Click Lyrics to load</p>
+        </div>
+      </div>
     `;
+
+    // Start Visualizer Canvas
+    const canvas = nowPlayingContainer.querySelector('#dashboard-visualizer');
+    if (canvas) {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      const ctx = canvas.getContext('2d');
+      let phase = 0;
+
+      function draw() {
+        if (!canvas.parentElement) return;
+        const w = canvas.width = canvas.offsetWidth;
+        const h = canvas.height = canvas.offsetHeight;
+        ctx.clearRect(0, 0, w, h);
+
+        const bars = 48;
+        const barWidth = w / bars;
+        phase += 0.05;
+
+        for (let i = 0; i < bars; i++) {
+          let barHeight = 3;
+          if (isPlaying) {
+            const sin1 = Math.sin(phase + i * 0.35);
+            const sin2 = Math.cos(phase * 0.7 + i * 0.2);
+            const val = (sin1 + sin2 + 2) / 4;
+            barHeight = Math.max(3, val * (h - 4));
+          }
+
+          const gradient = ctx.createLinearGradient(0, h, 0, h - barHeight);
+          gradient.addColorStop(0, '#5865F2');
+          gradient.addColorStop(1, '#9ba8ff');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(i * barWidth + 1, h - barHeight, barWidth - 2, barHeight);
+        }
+
+        animFrameId = requestAnimationFrame(draw);
+      }
+      draw();
+    }
+
+    // Lyrics helper functions
+    function updateActiveLyrics(timeSec) {
+      if (!isLyricsOpen || !lyricsCache?.syncedLyrics?.length) return;
+      const lyricsBody = nowPlayingContainer.querySelector('#lyrics-content');
+      if (!lyricsBody) return;
+      const lines = lyricsBody.querySelectorAll('.lyric-line');
+      let activeIdx = -1;
+
+      for (let i = 0; i < lyricsCache.syncedLyrics.length; i++) {
+        if (lyricsCache.syncedLyrics[i].time <= timeSec) {
+          activeIdx = i;
+        } else {
+          break;
+        }
+      }
+
+      lines.forEach((el, idx) => {
+        if (idx === activeIdx) {
+          if (!el.classList.contains('active')) {
+            el.classList.add('active');
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        } else {
+          el.classList.remove('active');
+        }
+      });
+    }
+
+    function renderLyricsDrawer(content) {
+      if (!content) return;
+      if (!lyricsCache || (!lyricsCache.plainLyrics && (!lyricsCache.syncedLyrics || lyricsCache.syncedLyrics.length === 0))) {
+        content.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1.5rem 0;">No lyrics available for this track.</p>';
+        return;
+      }
+
+      if (lyricsCache.syncedLyrics && lyricsCache.syncedLyrics.length > 0) {
+        content.innerHTML = `
+          <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+            ${lyricsCache.syncedLyrics.map((l) => `
+              <div class="lyric-line" data-time="${l.time}">
+                ${escapeHtml(l.text)}
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        for (const lineEl of content.querySelectorAll('.lyric-line')) {
+          lineEl.onclick = async () => {
+            const targetSec = parseFloat(lineEl.getAttribute('data-time'));
+            if (!isNaN(targetSec) && canControl) {
+              try {
+                await api.rpc('seek', selectedGuildId, { seconds: targetSec });
+                localElapsed = targetSec;
+                updateActiveLyrics(localElapsed);
+              } catch (_) { }
+            }
+          };
+        }
+        updateActiveLyrics(localElapsed);
+      } else {
+        content.innerHTML = `
+          <div style="white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: var(--text-bright); text-align: center;">
+            ${escapeHtml(lyricsCache.plainLyrics)}
+          </div>
+        `;
+      }
+    }
+
+    async function toggleLyrics(currentTrack) {
+      const drawer = nowPlayingContainer.querySelector('#lyrics-drawer');
+      const content = nowPlayingContainer.querySelector('#lyrics-content');
+      if (!drawer || !content) return;
+
+      isLyricsOpen = !isLyricsOpen;
+      drawer.style.display = isLyricsOpen ? 'block' : 'none';
+      if (!isLyricsOpen) return;
+
+      if (!lyricsCache || lyricsCache.trackTitle !== currentTrack.title) {
+        content.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1.5rem 0;">Fetching synchronized lyrics...</p>';
+        try {
+          const res = await api.rpc('lyrics.get', selectedGuildId, {
+            title: currentTrack.title,
+            artist: currentTrack.artist
+          });
+          if (res?.ok && res.data) {
+            lyricsCache = {
+              trackTitle: currentTrack.title,
+              syncedLyrics: res.data.syncedLyrics || [],
+              plainLyrics: res.data.plainLyrics || ''
+            };
+          } else {
+            lyricsCache = { trackTitle: currentTrack.title, syncedLyrics: [], plainLyrics: null };
+          }
+        } catch (_) {
+          lyricsCache = { trackTitle: currentTrack.title, syncedLyrics: [], plainLyrics: null };
+        }
+      }
+
+      renderLyricsDrawer(content);
+    }
+
+    // Hook Lyrics Button
+    const btnToggleLyrics = nowPlayingContainer.querySelector('#btn-toggle-lyrics');
+    if (btnToggleLyrics) {
+      btnToggleLyrics.onclick = () => toggleLyrics(cur);
+    }
+
+    const btnCloseLyrics = nowPlayingContainer.querySelector('#btn-close-lyrics');
+    if (btnCloseLyrics) {
+      btnCloseLyrics.onclick = () => {
+        isLyricsOpen = false;
+        const drawer = nowPlayingContainer.querySelector('#lyrics-drawer');
+        if (drawer) drawer.style.display = 'none';
+      };
+    }
+
+    // Restore open lyrics view if already open on re-render
+    if (isLyricsOpen) {
+      const lyricsContent = nowPlayingContainer.querySelector('#lyrics-content');
+      if (lyricsCache && lyricsCache.trackTitle === cur.title) {
+        renderLyricsDrawer(lyricsContent);
+      } else {
+        toggleLyrics(cur);
+      }
+    }
 
     // Hook seek bar slider
     const seekSlider = nowPlayingContainer.querySelector('#seek-slider');
@@ -447,6 +663,7 @@ export async function render(container, state) {
             seekSlider.value = localElapsed;
             if (seekCurrent) seekCurrent.textContent = formatDuration(localElapsed);
           }
+          updateActiveLyrics(localElapsed);
         }, 1000);
       }
     }
@@ -533,6 +750,16 @@ export async function render(container, state) {
     const upcoming = currentQueue?.upcoming || [];
     const canControl = isDjOrAbove();
 
+    const queueSummary = container.querySelector('#queue-header-summary');
+    if (queueSummary) {
+      if (upcoming.length > 0) {
+        const totalSec = upcoming.reduce((acc, t) => acc + (t.duration || 0), 0);
+        queueSummary.textContent = `• ${upcoming.length} tracks (${formatDuration(totalSec)})`;
+      } else {
+        queueSummary.textContent = '';
+      }
+    }
+
     btnShuffle.style.display = canControl && upcoming.length > 1 ? 'inline-block' : 'none';
     btnClear.style.display = canControl && upcoming.length > 0 ? 'inline-block' : 'none';
 
@@ -542,10 +769,11 @@ export async function render(container, state) {
     }
 
     queueContainer.innerHTML = `
-      <ul class="list-group" style="max-height: 400px; overflow-y: auto;">
+      <ul class="list-group" id="queue-list" style="max-height: 400px; overflow-y: auto;">
         ${upcoming.map((t, idx) => `
-          <li class="list-item">
-            <span style="font-size: 12px; color: var(--text-muted); width: 28px; font-family: var(--font-mono);">#${idx + 1}</span>
+          <li class="list-item queue-item" draggable="${canControl ? 'true' : 'false'}" data-index="${idx}">
+            ${canControl ? `<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>` : ''}
+            <span style="font-size: 12px; color: var(--text-muted); width: 26px; font-family: var(--font-mono);">#${idx + 1}</span>
             <div style="flex: 1; min-width: 0;">
               <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-bright);" title="${escapeHtml(t.title)}">
                 ${escapeHtml(t.title)}
@@ -565,6 +793,70 @@ export async function render(container, state) {
         `).join('')}
       </ul>
     `;
+
+    // Drag-and-drop queue reordering
+    if (canControl) {
+      let draggedIdx = null;
+      const items = queueContainer.querySelectorAll('.queue-item');
+
+      items.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+          draggedIdx = Number(item.getAttribute('data-index'));
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', String(draggedIdx));
+          item.classList.add('is-dragging');
+        });
+
+        item.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const targetIdx = Number(item.getAttribute('data-index'));
+          if (targetIdx === draggedIdx) return;
+
+          const rect = item.getBoundingClientRect();
+          const relY = e.clientY - rect.top;
+          if (relY < rect.height / 2) {
+            item.classList.add('drag-over-top');
+            item.classList.remove('drag-over-bottom');
+          } else {
+            item.classList.add('drag-over-bottom');
+            item.classList.remove('drag-over-top');
+          }
+        });
+
+        item.addEventListener('dragleave', () => {
+          item.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+
+        item.addEventListener('dragend', () => {
+          items.forEach(el => el.classList.remove('is-dragging', 'drag-over-top', 'drag-over-bottom'));
+          draggedIdx = null;
+        });
+
+        item.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          item.classList.remove('drag-over-top', 'drag-over-bottom');
+          const targetIdx = Number(item.getAttribute('data-index'));
+          if (draggedIdx === null || draggedIdx === targetIdx) return;
+
+          const from = draggedIdx;
+          const to = targetIdx;
+          draggedIdx = null;
+
+          // Optimistic local update
+          const moved = upcoming.splice(from, 1)[0];
+          upcoming.splice(to, 0, moved);
+          renderQueue();
+
+          try {
+            await api.rpc('queue.move', selectedGuildId, { from, to });
+            await refreshData();
+          } catch (_) {
+            await refreshData();
+          }
+        });
+      });
+    }
 
     for (const btn of queueContainer.querySelectorAll('.btn-remove')) {
       btn.onclick = async () => {
@@ -650,6 +942,7 @@ export async function render(container, state) {
   return () => {
     if (pollInterval) clearInterval(pollInterval);
     if (seekInterval) clearInterval(seekInterval);
+    if (animFrameId) cancelAnimationFrame(animFrameId);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     unsubscribeWs();
   };

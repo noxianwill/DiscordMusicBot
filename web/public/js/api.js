@@ -41,7 +41,7 @@ export async function request(path, options = {}) {
   }
 
   if (res.status === 401) {
-    if (!location.hash.startsWith('#login') && !location.hash.startsWith('#setup')) {
+    if (!location.hash.startsWith('#login') && !location.hash.startsWith('#setup') && !location.hash.startsWith('#live')) {
       location.hash = '#login';
     }
     throw new Error('Unauthorized');

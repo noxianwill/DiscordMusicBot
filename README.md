@@ -58,6 +58,11 @@ Engineered specifically for bulletproof 24/7 reliability on cloud servers (AWS, 
 ## Key Features
 
 - **Piped Audio Streaming (`YTDLPPipeAudio`)**: Eliminates `HTTP error 403 Forbidden` by streaming audio data directly from `yt-dlp` into FFmpeg's `stdin`. FFmpeg makes **zero direct HTTP requests** to YouTube's CDN.
+- **Spotify & SoundCloud Integration**: Direct support for Spotify track, album, and playlist links, and SoundCloud URLs in both Discord (`/play`) and the Web UI dashboard without needing Spotify API keys.
+- **Live Synchronized Lyrics (Karaoke)**: Discord `/lyrics` command and interactive Web UI karaoke drawer with live time-synced lyrics highlight and auto-scroll powered by LrcLib.
+- **Canvas Audio Spectrum Visualizer**: Real-time animated HTML5 audio visualizer wave embedded directly in the Web UI Now Playing view.
+- **Drag-and-Drop Queue Reordering**: Smooth web-based drag-and-drop queue management with optimistic UI reordering and fallback up/down arrows.
+- **Shareable Guest / Listener Link**: One-click shareable read-only live listening page (`/#live?guild=<id>`) where friends can follow playback progress, visualizer, and lyrics without Discord login.
 - **Modern Responsive Web UI**: Discord-themed dark mode interface with sticky sidebar, real-time live playback progress, seek slider, and volume control.
 - **YouTube to Local Playlist Importer**: Paste any YouTube video or playlist link, preview every song, uncheck unwanted tracks with a one-click checklist, and download directly to high-quality local MP3 with server cookie authentication.
 - **In-Browser YouTube Cookies Editor**: Safely view, edit, paste, or upload Netscape `cookies.txt` with zero vertical/horizontal scrolling, auto-resizing canvas, and privacy masking.
@@ -354,6 +359,7 @@ YouTube's SPA desktop website runs continuous client-side JavaScript that invali
 | `/playlist play <name>` | `!playlist play <name>` | Queue an entire local playlist folder | User |
 | `/playlist list` | `!playlist list` | List all available local playlists on disk | User |
 | `/playlist reload` | `!playlist reload` | Rescan local playlist folders from disk | Admin |
+| `/lyrics [query]` | `!lyrics [query]` | Fetch synced karaoke lyrics for current track or query | User |
 | `/leave` | `!leave` (`!disconnect`) | Disconnect bot from voice channel | DJ / Admin |
 | `/dashboard` | `!dashboard` | Send direct link to the Web UI dashboard | User |
 

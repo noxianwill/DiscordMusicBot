@@ -23,6 +23,8 @@ from bot.config import BotConfig
 from bot.audio.player import GuildPlayer, PlayerState
 from bot.audio.source import AudioTrack, SourceType
 from bot.audio.queue import LoopMode
+from bot.audio.spotify import SpotifyResolver, is_spotify_url
+from bot.audio.lyrics import LyricsService
 from bot.discord.permissions import get_user_permission, PermissionLevel
 
 logger = logging.getLogger(__name__)
@@ -59,6 +61,7 @@ ACTION_MIN_TIERS = {
     'history': 1,
     'playlists.list': 1,
     'playlists.get': 1,
+    'lyrics.get': 1,
     'leave': 3,
     'playlists.reload': 3,
 }
@@ -531,6 +534,46 @@ class ControlApiCog(commands.Cog):
         player = self.get_player(guild.id)
 
         try:
+            if is_spotify_url(query):
+                spotify_tracks = await SpotifyResolver.resolve(query)
+                if not spotify_tracks:
+                    return {"ok": False, "code": "NOT_FOUND", "error": "Could not extract tracks from Spotify link"}
+                
+                if len(spotify_tracks) == 1:
+                    track = await player.play_youtube(
+                        spotify_tracks[0]["query"],
+                        requester_id=user_id,
+                        requester_name=requester_name
+                    )
+                    return {
+                        "ok": True,
+                        "data": {
+                            "type": "track",
+                            "title": track.title,
+                            "artist": track.artist,
+                            "duration": track.duration
+                        }
+                    }
+                else:
+                    count = 0
+                    for s_item in spotify_tracks:
+                        try:
+                            await player.play_youtube(
+                                s_item["query"],
+                                requester_id=user_id,
+                                requester_name=requester_name
+                            )
+                            count += 1
+                        except Exception:
+                            pass
+                    return {
+                        "ok": True,
+                        "data": {
+                            "type": "playlist",
+                            "count": count
+                        }
+                    }
+
             if "list=" in query and ("youtube.com" in query or "youtu.be" in query):
                 tracks = await player.play_youtube_playlist(
                     query,
@@ -755,7 +798,9 @@ class ControlApiCog(commands.Cog):
     async def _action_queue_remove(self, user_id: int, guild: discord.Guild, params: Dict[str, Any], tier: str) -> Dict[str, Any]:
         index = int(params.get("index", -1))
         player = self.get_player(guild.id)
-        removed = await player.queue.remove(index)
+        offset = (player.queue.current_index + 1) if player.queue.current_index >= 0 else 0
+        actual_idx = offset + index
+        removed = await player.queue.remove(actual_idx)
         if not removed:
             return {"ok": False, "code": "NOT_FOUND", "error": "Queue item not found"}
         return {"ok": True, "data": {"title": removed.title}}
@@ -764,7 +809,10 @@ class ControlApiCog(commands.Cog):
         from_idx = int(params.get("from", -1))
         to_idx = int(params.get("to", -1))
         player = self.get_player(guild.id)
-        ok = await player.queue.move(from_idx, to_idx)
+        offset = (player.queue.current_index + 1) if player.queue.current_index >= 0 else 0
+        actual_from = offset + from_idx
+        actual_to = offset + to_idx
+        ok = await player.queue.move(actual_from, actual_to)
         if not ok:
             return {"ok": False, "code": "BAD_REQUEST", "error": "Invalid queue positions"}
         return {"ok": True, "data": {}}
@@ -793,6 +841,26 @@ class ControlApiCog(commands.Cog):
                 "requester": t.requester_name
             })
         return {"ok": True, "data": history_data}
+
+    async def _action_lyrics_get(self, user_id: int, guild: discord.Guild, params: Dict[str, Any], tier: str) -> Dict[str, Any]:
+        title = params.get("title")
+        artist = params.get("artist")
+
+        if not title:
+            player = self.get_player(guild.id)
+            curr = await player.queue.current()
+            if curr:
+                title = curr.title
+                artist = curr.artist
+
+        if not title:
+            return {"ok": False, "code": "NOT_PLAYING", "error": "No track is playing and no title was provided."}
+
+        data = await LyricsService.get_lyrics(title, artist)
+        if not data:
+            return {"ok": False, "code": "NOT_FOUND", "error": f"No lyrics found for '{title}'"}
+
+        return {"ok": True, "data": data}
 
     async def _action_playlists_list(self, user_id: int, guild: Optional[discord.Guild], params: Dict[str, Any], tier: str) -> Dict[str, Any]:
         if not self.bot.playlist_manager:

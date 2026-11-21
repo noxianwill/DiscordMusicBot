@@ -43,6 +43,36 @@ apiRouter.get('/api/status', (req, res) => {
   });
 });
 
+// GET /api/public/live - Public read-only live player and queue for guest listener link
+apiRouter.get('/api/public/live', async (req, res) => {
+  const guildId = req.query.guildId;
+  if (!guildId || !/^\d{17,20}$/.test(String(guildId))) {
+    return res.status(400).json({ error: 'Valid guildId query parameter is required' });
+  }
+
+  if (!isAgentConnected()) {
+    return res.status(503).json({ error: 'Bot agent is currently offline' });
+  }
+
+  try {
+    const [stateRes, queueRes] = await Promise.all([
+      requestAgent('guild.state', '0', String(guildId), {}).catch(() => null),
+      requestAgent('queue.get', '0', String(guildId), {}).catch(() => null)
+    ]);
+
+    res.json({
+      ok: true,
+      data: {
+        guildId: String(guildId),
+        state: stateRes,
+        queue: queueRes
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to fetch live state' });
+  }
+});
+
 // GET /api/me - Authenticated
 apiRouter.get('/api/me', requireAuth, async (req, res) => {
   const agentConnected = isAgentConnected();

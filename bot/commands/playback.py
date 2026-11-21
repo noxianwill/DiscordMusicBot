@@ -14,6 +14,8 @@ from bot.audio.player import GuildPlayer
 from bot.audio.metadata import MetadataExtractor
 from bot.audio.source import AudioTrack, SourceType
 from bot.audio.queue import LoopMode
+from bot.audio.spotify import SpotifyResolver, is_spotify_url
+from bot.audio.lyrics import LyricsService
 from bot.utils.embeds import EmbedFactory
 from bot.discord.permissions import (
     require_permission, PermissionLevel, check_command_channel,
@@ -142,7 +144,41 @@ class PlaybackCog(commands.Cog):
             embed = EmbedFactory.track_added(track)
             return await interaction.followup.send(embed=embed)
 
-        # YouTube playback via yt-dlp
+        # Check if query is a Spotify URL
+        if is_spotify_url(query):
+            try:
+                spotify_tracks = await SpotifyResolver.resolve(query)
+                if not spotify_tracks:
+                    return await interaction.followup.send("❌ Could not extract tracks from this Spotify URL.")
+                
+                if len(spotify_tracks) == 1:
+                    resolved_query = spotify_tracks[0]["query"]
+                    track = await player.play_youtube(
+                        resolved_query,
+                        requester_id=interaction.user.id,
+                        requester_name=interaction.user.display_name
+                    )
+                    embed = EmbedFactory.track_added(track)
+                    embed.set_footer(text=f"Matched from Spotify: {spotify_tracks[0]['title']} • Requested by {interaction.user.display_name}")
+                    return await interaction.followup.send(embed=embed)
+                else:
+                    queued_count = 0
+                    for s_item in spotify_tracks:
+                        try:
+                            await player.play_youtube(
+                                s_item["query"],
+                                requester_id=interaction.user.id,
+                                requester_name=interaction.user.display_name
+                            )
+                            queued_count += 1
+                        except Exception as q_err:
+                            logger.warning(f"Error queueing Spotify item {s_item['title']}: {q_err}")
+                    return await interaction.followup.send(f"✅ Added **{queued_count}** tracks from Spotify collection to queue.")
+            except Exception as e:
+                logger.error(f"Error resolving Spotify link: {e}")
+                return await interaction.followup.send(f"❌ Error processing Spotify link: {e}")
+
+        # Media playback via yt-dlp (YouTube, SoundCloud, Bandcamp, direct URLs)
         try:
             if "list=" in query and ("youtube.com" in query or "youtu.be" in query):
                 tracks = await player.play_youtube_playlist(
@@ -158,12 +194,50 @@ class PlaybackCog(commands.Cog):
                     requester_name=interaction.user.display_name
                 )
                 embed = EmbedFactory.track_added(track)
+                if "soundcloud.com" in query:
+                    embed.set_footer(text=f"Source: SoundCloud • Requested by {interaction.user.display_name}")
                 return await interaction.followup.send(embed=embed)
         except Exception as e:
             import re
             clean_err = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', str(e)).strip()
             logger.error(f"Error playing track: {clean_err}")
             return await interaction.followup.send(f"❌ Error playing track: {clean_err}")
+
+    @app_commands.command(name="lyrics", description="Display live synchronized or plain lyrics for the current song")
+    @app_commands.describe(query="Optional song title or artist to search")
+    async def lyrics_cmd(self, interaction: discord.Interaction, query: Optional[str] = None):
+        """Displays lyrics for the current or queried song."""
+        await interaction.response.defer()
+        player = self.get_player(interaction.guild_id)
+
+        title = query
+        artist = None
+        if not title:
+            curr = await player.queue.current()
+            if curr:
+                title = curr.title
+                artist = curr.artist
+
+        if not title:
+            return await interaction.followup.send("❌ Nothing is currently playing! Specify a title: `/lyrics query:Song Title`")
+
+        lyrics_data = await LyricsService.get_lyrics(title, artist)
+        if not lyrics_data or not lyrics_data.get("plainLyrics"):
+            return await interaction.followup.send(f"❌ No lyrics found for **{title}**.")
+
+        plain = lyrics_data["plainLyrics"]
+        if len(plain) > 3900:
+            plain = plain[:3890] + "\n\n*(lyrics truncated for Discord)*"
+
+        embed = discord.Embed(
+            title=f"🎤 Lyrics: {lyrics_data['title']}",
+            description=plain,
+            color=0x5865F2
+        )
+        if lyrics_data.get("artist"):
+            embed.set_author(name=lyrics_data["artist"])
+        embed.set_footer(text="Synced karaoke view available in Web UI Dashboard • Powered by LrcLib")
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="pause", description="Pause current playback")
     @require_permission(PermissionLevel.DJ)

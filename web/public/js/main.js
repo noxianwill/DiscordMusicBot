@@ -12,6 +12,7 @@ import * as ViewCookies from './views/cookies.js';
 import * as ViewControl from './views/control.js';
 import * as ViewSettings from './views/settings.js';
 import * as ViewLogs from './views/logs.js';
+import * as ViewLive from './views/live.js';
 
 registerRoute('#login', ViewLogin);
 registerRoute('#setup', ViewSetup);
@@ -22,6 +23,7 @@ registerRoute('#cookies', ViewCookies);
 registerRoute('#control', ViewControl);
 registerRoute('#settings', ViewSettings);
 registerRoute('#logs', ViewLogs);
+registerRoute('#live', ViewLive);
 
 const appState = {
   status: null,
@@ -50,7 +52,7 @@ async function init() {
   const currentHash = location.hash.split('?')[0];
 
   if (!appState.user) {
-    if (currentHash !== '#setup' && currentHash !== '#login') {
+    if (currentHash !== '#setup' && currentHash !== '#login' && currentHash !== '#live') {
       location.hash = '#login';
     }
   } else {
