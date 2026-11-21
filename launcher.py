@@ -952,15 +952,24 @@ class BotLauncher:
 
         # Backup existing
         if target_file.exists():
-            shutil.copy2(target_file, backup_file)
+            try:
+                backup_file.write_bytes(target_file.read_bytes())
+            except Exception as e:
+                logger.warning(f"Could not backup cookies.txt: {e}")
 
         # Atomic replace
         tmp_file = target_file.with_suffix('.tmp')
         with open(tmp_file, 'w', encoding='utf-8') as f:
             f.write(text.strip() + "\n")
-        os.chmod(tmp_file, 0o600)
+        try:
+            os.chmod(tmp_file, 0o600)
+        except Exception:
+            pass
         tmp_file.replace(target_file)
-        os.chmod(target_file, 0o600)
+        try:
+            os.chmod(target_file, 0o600)
+        except Exception:
+            pass
 
         return {"ok": True, "data": {"restartRecommended": False}}
 
@@ -996,7 +1005,10 @@ class BotLauncher:
 
         # Backup config
         backup_path = self.config_path.with_suffix('.txt.bak')
-        shutil.copy2(self.config_path, backup_path)
+        try:
+            backup_path.write_bytes(self.config_path.read_bytes())
+        except Exception as e:
+            logger.warning(f"Could not backup config: {e}")
 
         # Read and modify lines
         lines: List[str] = []
@@ -1022,11 +1034,13 @@ class BotLauncher:
             if k not in modified_keys:
                 new_lines.append(f"{k}={v}\n")
 
-        # Atomic write
-        tmp_config = self.config_path.with_suffix('.tmp')
-        with open(tmp_config, 'w', encoding='utf-8') as f:
-            f.writelines(new_lines)
-        tmp_config.replace(self.config_path)
+        # Write config safely
+        try:
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                f.writelines(new_lines)
+        except Exception as e:
+            logger.error(f"Failed to write config: {e}")
+            return {"ok": False, "code": "IO_ERROR", "error": f"Failed to save settings: {e}"}
 
         # Reload settings in launcher
         self.load_settings()

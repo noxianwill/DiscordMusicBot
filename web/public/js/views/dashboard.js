@@ -447,7 +447,12 @@ export async function render(container, state) {
     const loopMode = currentGuildState.loop || 'off';
     const volume = currentGuildState.volume || 75;
     const duration = cur.duration || 0;
-    localElapsed = cur.elapsed || 0;
+    const serverElapsed = Number(cur.elapsed || 0);
+    if (!isDraggingSeek) {
+      if (Math.abs(localElapsed - serverElapsed) > 1.2 || !isPlaying) {
+        localElapsed = serverElapsed;
+      }
+    }
 
     nowPlayingContainer.innerHTML = `
       <div class="now-playing">
@@ -711,17 +716,17 @@ export async function render(container, state) {
         } catch (_) { }
       };
 
-      // Realtime client-side elapsed timer while actively playing
+      // Realtime high-precision client timer (250ms interval) for ultra-tight lyrics and progress sync
       if (isPlaying) {
         seekInterval = setInterval(() => {
           if (!isDraggingSeek && seekSlider) {
-            localElapsed += 1;
+            localElapsed += 0.25;
             if (localElapsed > duration) localElapsed = duration;
-            seekSlider.value = localElapsed;
-            if (seekCurrent) seekCurrent.textContent = formatDuration(localElapsed);
+            seekSlider.value = Math.round(localElapsed);
+            if (seekCurrent) seekCurrent.textContent = formatDuration(Math.round(localElapsed));
           }
           updateActiveLyrics(localElapsed);
-        }, 1000);
+        }, 250);
       }
     }
 

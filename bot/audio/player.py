@@ -144,8 +144,10 @@ class BufferedAudioSource(discord.AudioSource):
     Paces audio delivery and absorbs network delays/DASH fragment pauses, preventing 
     discord.py AudioPlayer from falling behind real-time (which causes sudden fast-forward catchup).
     """
-    def __init__(self, original_source: discord.AudioSource, prebuffer_seconds: float = 1.5):
+    def __init__(self, original_source: discord.AudioSource, prebuffer_seconds: float = 1.5, seek_offset: float = 0.0):
         self.original = original_source
+        self.seek_offset = float(seek_offset)
+        self.frames_sent = 0
         self.chunks_per_sec = 50  # 50 chunks of 3840 bytes = 1 sec of 48kHz 16-bit stereo PCM
         self.prebuffer_chunks = int(prebuffer_seconds * self.chunks_per_sec)
         
@@ -195,6 +197,8 @@ class BufferedAudioSource(discord.AudioSource):
             # Any blocking inside read() causes discord.py to burst packets with delay=0,
             # which causes Discord's client to fast-forward/speed up.
             chunk = self.buffer.get_nowait()
+            if chunk:
+                self.frames_sent += 1
             if self._in_underflow:
                 logger.debug(f"Audio buffer recovered after {self._underflow_count} silence frames")
                 self._in_underflow = False
@@ -211,6 +215,10 @@ class BufferedAudioSource(discord.AudioSource):
             else:
                 self._underflow_count += 1
             return b'\x00' * 3840
+
+    @property
+    def position(self) -> float:
+        return self.seek_offset + (self.frames_sent * 0.02)
 
     def cleanup(self):
         self.stopped.set()
@@ -239,6 +247,14 @@ class GuildPlayer:
         self.state: PlayerState = PlayerState.IDLE
         self._play_lock = asyncio.Lock()
         self._play_generation: int = 0  # Monotonic counter to ignore stale callbacks
+        self._current_source: Optional[BufferedAudioSource] = None
+
+    @property
+    def position(self) -> float:
+        """Returns the frame-accurate playback position in seconds based on audio delivered to Discord."""
+        if self._current_source and self.state in (PlayerState.PLAYING, PlayerState.PAUSED):
+            return round(self._current_source.position, 2)
+        return 0.0
 
     @property
     def guild_str(self) -> str:
@@ -367,11 +383,12 @@ class GuildPlayer:
 
                 if track.source_type == SourceType.LOCAL_FILE:
                     source_uri = track.source_uri
-                    audio_source = discord.FFmpegPCMAudio(
+                    raw_source = discord.FFmpegPCMAudio(
                         source_uri, 
                         before_options=before_options.strip() or None, 
                         options=ffmpeg_options
                     )
+                    audio_source = BufferedAudioSource(raw_source, prebuffer_seconds=0.5, seek_offset=seek_seconds)
                 elif track.source_type == SourceType.YOUTUBE:
                     # Pipe yt-dlp into FFmpeg with fast probing and wrap in jitter buffer
                     # to eliminate network stutter, buffer starvation, and fast-forward catchup.
@@ -384,10 +401,11 @@ class GuildPlayer:
                         before_options=pipe_before,
                         options=ffmpeg_options
                     )
-                    audio_source = BufferedAudioSource(raw_source, prebuffer_seconds=1.5)
+                    audio_source = BufferedAudioSource(raw_source, prebuffer_seconds=1.5, seek_offset=seek_seconds)
                 else:
                     raise ValueError(f"Unknown source type: {track.source_type}")
                 
+                self._current_source = audio_source
                 volume_transformer = discord.PCMVolumeTransformer(audio_source, volume=self.volume)
 
                 # Create a generation-scoped callback.  When play_track() is
@@ -417,6 +435,7 @@ class GuildPlayer:
 
     def _playback_finished(self, error: Optional[Exception]):
         """Callback invoked by discord.py when playback finishes naturally."""
+        self._current_source = None
         if error:
             logger.error(f"Playback error: {error}")
             
@@ -478,6 +497,7 @@ class GuildPlayer:
     async def stop(self):
         """Stops playback and clears the queue."""
         self.state = PlayerState.STOPPED
+        self._current_source = None
         guild = self.bot.get_guild(self.guild_id)
         if guild and guild.voice_client:
             guild.voice_client.stop()

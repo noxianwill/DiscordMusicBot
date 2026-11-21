@@ -405,31 +405,8 @@ class ControlApiCog(commands.Cog):
             if curr:
                 source_type_str = curr.source_type.name.lower() if hasattr(curr.source_type, 'name') else str(curr.source_type).lower()
 
-                tracker = self._playback_trackers.get(guild.id)
-                now = time.time()
-                curr_key = f"{curr.title}_{curr.duration}_{curr.source_uri}"
-                if not tracker or tracker.get("key") != curr_key:
-                    tracker = {
-                        "key": curr_key,
-                        "start_time": now,
-                        "seek_offset": 0.0,
-                        "paused_at": now if is_paused else None,
-                        "total_paused": 0.0
-                    }
-                    self._playback_trackers[guild.id] = tracker
-                else:
-                    if is_paused and tracker.get("paused_at") is None:
-                        tracker["paused_at"] = now
-                    elif is_playing and tracker.get("paused_at") is not None:
-                        tracker["total_paused"] += (now - tracker["paused_at"])
-                        tracker["paused_at"] = None
-
-                if tracker.get("paused_at") is not None:
-                    elapsed = tracker["paused_at"] - tracker["start_time"] - tracker["total_paused"] + tracker["seek_offset"]
-                else:
-                    elapsed = now - tracker["start_time"] - tracker["total_paused"] + tracker["seek_offset"]
-
-                elapsed = max(0.0, elapsed)
+                elapsed = getattr(player, 'position', 0.0)
+                elapsed = max(0.0, float(elapsed))
                 if curr.duration and curr.duration > 0:
                     elapsed = min(elapsed, float(curr.duration))
 
