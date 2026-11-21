@@ -92,11 +92,14 @@ def _get_cookie_header() -> Optional[str]:
 class YTDLPPipeAudio(discord.FFmpegPCMAudio):
     """Pipes audio directly from yt-dlp to FFmpeg stdin to eliminate 403 Forbidden errors."""
     def __init__(self, url: str, seek_seconds: float = 0, before_options: Optional[str] = None, options: Optional[str] = '-vn'):
+        cache_dir = Path.home() / '.cache' / 'yt-dlp'
         cmd = get_ytdlp_cmd() + [
             '--format', 'bestaudio/ba/b/best',
             '--no-playlist',
             '--quiet',
             '--no-warnings',
+            '--buffer-size', '64K',
+            '--cache-dir', str(cache_dir),
             '--remote-components', 'ejs:github',
             '--extractor-args', 'youtube:player_client=android,ios,mweb,web',
         ]
@@ -141,7 +144,7 @@ class BufferedAudioSource(discord.AudioSource):
     Paces audio delivery and absorbs network delays/DASH fragment pauses, preventing 
     discord.py AudioPlayer from falling behind real-time (which causes sudden fast-forward catchup).
     """
-    def __init__(self, original_source: discord.AudioSource, prebuffer_seconds: float = 2.0):
+    def __init__(self, original_source: discord.AudioSource, prebuffer_seconds: float = 1.5):
         self.original = original_source
         self.chunks_per_sec = 50  # 50 chunks of 3840 bytes = 1 sec of 48kHz 16-bit stereo PCM
         self.prebuffer_chunks = int(prebuffer_seconds * self.chunks_per_sec)
@@ -150,11 +153,15 @@ class BufferedAudioSource(discord.AudioSource):
         self.buffer = queue.Queue(maxsize=10 * self.chunks_per_sec)
         self.stopped = threading.Event()
         self.finished = threading.Event()
+        self._ready = threading.Event()
         self._in_underflow = False
         self._underflow_count = 0
         
         self.reader_thread = threading.Thread(target=self._reader_worker, daemon=True)
         self.reader_thread.start()
+        
+        # Pre-buffer: wait briefly for initial chunks to populate RAM buffer before playback starts
+        self._ready.wait(timeout=1.5)
         logger.debug(f"BufferedAudioSource worker thread started (target pre-buffer: {self.prebuffer_chunks} chunks)")
 
     def _reader_worker(self):
@@ -163,23 +170,31 @@ class BufferedAudioSource(discord.AudioSource):
                 data = self.original.read()
                 if not data:
                     self.finished.set()
+                    self._ready.set()
                     break
                 while not self.stopped.is_set():
                     try:
                         self.buffer.put(data, timeout=0.1)
+                        if self.buffer.qsize() >= self.prebuffer_chunks:
+                            self._ready.set()
                         break
                     except queue.Full:
                         continue
             except Exception as e:
                 logger.error(f"Error in buffered reader: {e}")
                 self.finished.set()
+                self._ready.set()
                 break
 
     def read(self) -> bytes:
         if self.stopped.is_set():
             return b''
         try:
-            chunk = self.buffer.get(timeout=0.05 if not self.finished.is_set() else 0.01)
+            # NON-BLOCKING read: MUST return immediately (0ms) so discord.py's
+            # AudioPlayer loop never falls behind its 20ms real-time clock.
+            # Any blocking inside read() causes discord.py to burst packets with delay=0,
+            # which causes Discord's client to fast-forward/speed up.
+            chunk = self.buffer.get_nowait()
             if self._in_underflow:
                 logger.debug(f"Audio buffer recovered after {self._underflow_count} silence frames")
                 self._in_underflow = False
@@ -188,7 +203,7 @@ class BufferedAudioSource(discord.AudioSource):
         except queue.Empty:
             if self.finished.is_set():
                 return b''
-            # Underflow fallback: send silence frame instead of blocking to preserve audio clock timing
+            # Underflow fallback: send silence frame instantly (0ms) to preserve audio clock timing
             if not self._in_underflow:
                 self._in_underflow = True
                 self._underflow_count = 1
@@ -359,15 +374,17 @@ class GuildPlayer:
                     )
                 elif track.source_type == SourceType.YOUTUBE:
                     # Pipe yt-dlp into FFmpeg with fast probing and wrap in jitter buffer
-                    # to eliminate network stutter, buffer starvation, and fast-forward catchup
-                    pipe_before = f"-probesize 32k -analyzeduration 0 {before_options}".strip() or None
+                    # to eliminate network stutter, buffer starvation, and fast-forward catchup.
+                    # Note: YTDLPPipeAudio handles seeking via yt-dlp --download-sections,
+                    # so we do NOT pass -ss to FFmpeg pipe (which would cause a double-seek delay).
+                    pipe_before = "-probesize 32k -analyzeduration 0"
                     raw_source = YTDLPPipeAudio(
                         track.source_uri,
                         seek_seconds=seek_seconds,
                         before_options=pipe_before,
                         options=ffmpeg_options
                     )
-                    audio_source = BufferedAudioSource(raw_source, prebuffer_seconds=2.0)
+                    audio_source = BufferedAudioSource(raw_source, prebuffer_seconds=1.5)
                 else:
                     raise ValueError(f"Unknown source type: {track.source_type}")
                 
