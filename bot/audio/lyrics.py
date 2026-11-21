@@ -13,30 +13,34 @@ logger = logging.getLogger(__name__)
 LRCLIB_GET_URL = "https://lrclib.net/api/get"
 LRCLIB_SEARCH_URL = "https://lrclib.net/api/search"
 
-# Common fluff to strip from YouTube video titles for clean matching
-CLEAN_TITLE_REGEXES = [
-    r'\(official\s*(?:music)?\s*(?:video|audio|lyric|lyrics|visualizer)?\)',
-    r'\[official\s*(?:music)?\s*(?:video|audio|lyric|lyrics|visualizer)?\]',
-    r'\(lyrics?\)',
-    r'\[lyrics?\]',
-    r'\(audio\)',
-    r'\[audio\]',
-    r'\(hd\)',
-    r'\[hd\]',
-    r'\(4k\)',
-    r'\[4k\]',
-    r'\|.*$',
-]
-
-
-def clean_song_title(title: str) -> str:
+def clean_song_title(title: str, artist: Optional[str] = None) -> tuple[str, Optional[str]]:
     """Removes common YouTube video noise like (Official Video), [Lyrics], etc."""
     if not title:
-        return ""
+        return "", artist
     cleaned = title
-    for r in CLEAN_TITLE_REGEXES:
-        cleaned = re.sub(r, '', cleaned, flags=re.IGNORECASE)
-    return cleaned.strip(' -|[]()')
+    # Remove bracketed/parenthesized tags like (Official HD Video), [Remastered], (Lyrics), etc.
+    cleaned = re.sub(
+        r'[\(\[][^\)\]]*(?:official|video|audio|lyrics?|remaster|hd|4k|visualizer|clip|version)[^\)\]]*[\)\]]',
+        '',
+        cleaned,
+        flags=re.IGNORECASE
+    )
+    cleaned = re.sub(r'\|.*$', '', cleaned)
+    cleaned = cleaned.strip(' -|[]()')
+
+    extracted_artist = artist
+    if ' - ' in cleaned:
+        parts = cleaned.split(' - ', 1)
+        if artist and (artist.lower() in parts[0].lower() or parts[0].lower() in artist.lower()):
+            extracted_artist = artist
+            cleaned = parts[1].strip()
+        elif not artist:
+            extracted_artist = parts[0].strip()
+            cleaned = parts[1].strip()
+        else:
+            cleaned = parts[1].strip()
+
+    return cleaned.strip(' -|[]()'), extracted_artist
 
 
 def parse_lrc(lrc_text: str) -> List[Dict[str, Any]]:
@@ -79,10 +83,11 @@ class LyricsService:
         Attempts to fetch lyrics for the given song.
         Returns dict with title, artist, plainLyrics, syncedLyrics, and lines.
         """
-        cleaned_title = clean_song_title(title)
-        params = {"track_name": cleaned_title}
-        if artist:
-            params["artist_name"] = artist
+        cleaned_title, effective_artist = clean_song_title(title, artist)
+        target_title = cleaned_title or title
+        params = {"track_name": target_title}
+        if effective_artist:
+            params["artist_name"] = effective_artist
         if duration:
             params["duration"] = int(duration)
 
@@ -97,12 +102,12 @@ class LyricsService:
                 async with session.get(LRCLIB_GET_URL, params=params, timeout=aiohttp.ClientTimeout(total=5)) as res:
                     if res.status == 200:
                         data = await res.json()
-                        return LyricsService._format_result(data, cleaned_title, artist)
+                        return LyricsService._format_result(data, target_title, effective_artist)
             except Exception as e:
                 logger.debug(f"LrcLib exact get failed: {e}")
 
             # 2. Try search fallback
-            search_query = f"{cleaned_title} {artist or ''}".strip()
+            search_query = f"{target_title} {effective_artist or ''}".strip()
             try:
                 async with session.get(LRCLIB_SEARCH_URL, params={"q": search_query}, timeout=aiohttp.ClientTimeout(total=5)) as res:
                     if res.status == 200:
@@ -114,7 +119,7 @@ class LyricsService:
                                 if r.get("syncedLyrics"):
                                     best = r
                                     break
-                            return LyricsService._format_result(best, cleaned_title, artist)
+                            return LyricsService._format_result(best, target_title, effective_artist)
             except Exception as e:
                 logger.debug(f"LrcLib search failed: {e}")
 

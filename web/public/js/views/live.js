@@ -244,13 +244,45 @@ export async function render(container, state) {
     if (!lyricsData || lyricsData.trackTitle !== currentTrack.title) {
       lyricsContent.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1.5rem 0;">Searching for lyrics...</p>';
       try {
-        const queryParams = new URLSearchParams({
-          track_name: currentTrack.title || '',
-          artist_name: currentTrack.artist || ''
-        });
-        const res = await fetch(`https://lrclib.net/api/get?${queryParams}`);
-        if (res.ok) {
-          const data = await res.json();
+        let cleanTitle = (currentTrack.title || '')
+          .replace(/[\(\[][^\)\]]*(?:official|video|audio|lyrics?|remaster|hd|4k|visualizer|clip|version)[^\)\]]*[\)\]]/gi, '')
+          .replace(/\|.*$/, '')
+          .trim();
+        let artist = currentTrack.artist || '';
+        if (cleanTitle.includes(' - ')) {
+          const parts = cleanTitle.split(' - ');
+          if (artist && (artist.toLowerCase().includes(parts[0].toLowerCase()) || parts[0].toLowerCase().includes(artist.toLowerCase()))) {
+            cleanTitle = parts[1].trim();
+          } else if (!artist) {
+            artist = parts[0].trim();
+            cleanTitle = parts[1].trim();
+          } else {
+            cleanTitle = parts[1].trim();
+          }
+        }
+
+        let data = null;
+        if (artist) {
+          try {
+            const queryParams = new URLSearchParams({ track_name: cleanTitle, artist_name: artist });
+            const res = await fetch(`https://lrclib.net/api/get?${queryParams}`);
+            if (res.ok) data = await res.json();
+          } catch (_) { }
+        }
+
+        if (!data) {
+          try {
+            const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent((cleanTitle + ' ' + artist).trim())}`);
+            if (searchRes.ok) {
+              const list = await searchRes.json();
+              if (Array.isArray(list) && list.length > 0) {
+                data = list.find(x => x.syncedLyrics) || list[0];
+              }
+            }
+          } catch (_) { }
+        }
+
+        if (data) {
           lyricsData = {
             trackTitle: currentTrack.title,
             synced: parseLrcLines(data.syncedLyrics),
@@ -386,3 +418,4 @@ export async function render(container, state) {
     unsubscribeWs();
   };
 }
+

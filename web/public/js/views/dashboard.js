@@ -588,15 +588,16 @@ export async function render(container, state) {
       if (!lyricsCache || lyricsCache.trackTitle !== currentTrack.title) {
         content.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1.5rem 0;">Fetching synchronized lyrics...</p>';
         try {
-          const res = await api.rpc('lyrics.get', selectedGuildId, {
+          const raw = await api.rpc('lyrics.get', selectedGuildId, {
             title: currentTrack.title,
             artist: currentTrack.artist
           });
-          if (res?.ok && res.data) {
+          const lyricsData = raw?.data || raw;
+          if (lyricsData && (lyricsData.syncedLyrics?.length || lyricsData.plainLyrics)) {
             lyricsCache = {
               trackTitle: currentTrack.title,
-              syncedLyrics: res.data.syncedLyrics || [],
-              plainLyrics: res.data.plainLyrics || ''
+              syncedLyrics: lyricsData.syncedLyrics || [],
+              plainLyrics: lyricsData.plainLyrics || ''
             };
           } else {
             lyricsCache = { trackTitle: currentTrack.title, syncedLyrics: [], plainLyrics: null };
