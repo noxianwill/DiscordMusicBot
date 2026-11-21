@@ -184,10 +184,14 @@ export async function render(container, state) {
 
     try {
       const res = await api.rpc('play', selectedGuildId, { query });
-      if (res.type === 'playlist') {
-        showToast(`Added ${res.count} tracks from YouTube playlist!`, 'success');
+      if (res?.type === 'playlist') {
+        if (!res.count) {
+          showToast('No tracks could be loaded from playlist', 'error');
+        } else {
+          showToast(`Added ${res.count} tracks from YouTube playlist!`, 'success');
+        }
       } else {
-        showToast(`Added: ${res.title || query}`, 'success');
+        showToast(`Added: ${res?.title || query}`, 'success');
       }
       playInput.value = '';
       queryTypeBadge.textContent = 'Search';

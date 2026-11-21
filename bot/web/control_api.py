@@ -580,6 +580,8 @@ class ControlApiCog(commands.Cog):
                     requester_id=user_id,
                     requester_name=requester_name
                 )
+                if not tracks:
+                    return {"ok": False, "code": "NOT_FOUND", "error": "No tracks could be loaded from this playlist."}
                 return {
                     "ok": True,
                     "data": {

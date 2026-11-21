@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import sys
+import urllib.parse
 from enum import Enum, auto
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -532,8 +533,26 @@ class GuildPlayer:
         cookie_file = find_cookie_file()
         is_verbose = bool(getattr(getattr(self.bot, 'config', None), 'log_ytdlp_verbose', False))
 
+        target_url = url
+        video_fallback_url = None
+        try:
+            parsed = urllib.parse.urlparse(url)
+            qs = urllib.parse.parse_qs(parsed.query)
+            if 'v' in qs and qs['v']:
+                video_fallback_url = f"https://www.youtube.com/watch?v={qs['v'][0]}"
+            if 'list' in qs and qs['list']:
+                list_id = qs['list'][0]
+                # Standard playlists (PL, UU, FL, LL, OLAK, etc.) should use /playlist?list=
+                # RD mixes must retain the seed video watch URL
+                if not list_id.startswith('RD'):
+                    target_url = f"https://www.youtube.com/playlist?list={list_id}"
+        except Exception:
+            target_url = url
+
         ydl_options = {
             'extract_flat': True,
+            'skip_download': True,
+            'ignoreerrors': True,
             'quiet': not is_verbose,
             'verbose': is_verbose,
             'no_warnings': not is_verbose,
@@ -558,7 +577,7 @@ class GuildPlayer:
             opts = dict(ydl_options)
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
-                    return ydl.extract_info(url, download=False)
+                    return ydl.extract_info(target_url, download=False)
             except Exception as e:
                 if 'cookiefile' in opts:
                     logger.warning(f"YouTube playlist extraction with cookies failed ({e}). Retrying without cookies using mobile client...")
@@ -569,36 +588,77 @@ class GuildPlayer:
                         }
                     }
                     with yt_dlp.YoutubeDL(opts) as ydl:
-                        return ydl.extract_info(url, download=False)
+                        return ydl.extract_info(target_url, download=False)
                 raise
 
-        info = await asyncio.to_thread(extract)
-        tracks = []
-        
-        if info and 'entries' in info:
-            playlist_title = info.get('title')
-            for entry in info['entries']:
-                if entry:
-                    track = AudioTrack(
-                        title=entry.get('title', 'Unknown Title'),
-                        artist=entry.get('uploader'),
-                        duration=float(entry.get('duration', 0)) if entry.get('duration') else None,
-                        source_type=SourceType.YOUTUBE,
-                        source_uri=entry.get('url', entry.get('webpage_url', '')),
-                        requester_id=requester_id,
-                        requester_name=requester_name,
-                        playlist_name=playlist_title
-                    )
-                    tracks.append(track)
-                    
-            await self.queue.add_many(tracks)
-            
-            if self.state in (PlayerState.IDLE, PlayerState.STOPPED, PlayerState.ERROR):
-                current = await self.queue.current()
-                if current:
-                    await self.play_track(current)
+        info = None
+        try:
+            info = await asyncio.to_thread(extract)
+        except Exception as e:
+            logger.warning(f"Playlist extraction failed for '{target_url}': {e}")
+            if video_fallback_url:
+                logger.info(f"Falling back to single video playback: '{video_fallback_url}'")
+                single_track = await self.play_youtube(video_fallback_url, requester_id, requester_name)
+                return [single_track]
+            raise
 
-        logger.info(f"Loaded {len(tracks)} tracks from playlist '{info.get('title') if info else url}' into queue ({self.guild_str})")
+        entries = []
+        if info:
+            if 'entries' in info and info['entries'] is not None:
+                entries = list(info['entries'])
+            elif info.get('title') and (info.get('id') or info.get('url')):
+                entries = [info]
+
+        tracks = []
+        playlist_title = info.get('title') if info else 'YouTube Playlist'
+        for entry in entries:
+            if not entry or entry.get('title') in ('[Private video]', '[Deleted video]'):
+                continue
+            
+            vid_id = entry.get('id')
+            vid_url = entry.get('url') or entry.get('webpage_url')
+            if vid_url and not vid_url.startswith('http'):
+                vid_url = f"https://www.youtube.com/watch?v={vid_url}"
+            elif not vid_url and vid_id:
+                vid_url = f"https://www.youtube.com/watch?v={vid_id}"
+
+            if not vid_url:
+                continue
+
+            thumb_url = None
+            if entry.get('thumbnails') and isinstance(entry['thumbnails'], list) and len(entry['thumbnails']) > 0:
+                thumb_url = entry['thumbnails'][-1].get('url')
+            elif entry.get('thumbnail'):
+                thumb_url = entry.get('thumbnail')
+
+            track = AudioTrack(
+                title=entry.get('title', 'Unknown Title'),
+                artist=entry.get('uploader') or entry.get('channel') or '',
+                duration=float(entry.get('duration', 0)) if entry.get('duration') else None,
+                source_type=SourceType.YOUTUBE,
+                source_uri=vid_url,
+                requester_id=requester_id,
+                requester_name=requester_name,
+                playlist_name=playlist_title,
+                thumbnail_url=thumb_url
+            )
+            tracks.append(track)
+
+        if not tracks:
+            if video_fallback_url:
+                logger.info(f"0 tracks in playlist; falling back to single video: '{video_fallback_url}'")
+                single_track = await self.play_youtube(video_fallback_url, requester_id, requester_name)
+                return [single_track]
+            raise ValueError("No playable tracks found in playlist (it may be empty, private, or region-restricted).")
+
+        await self.queue.add_many(tracks)
+
+        if self.state in (PlayerState.IDLE, PlayerState.STOPPED, PlayerState.ERROR):
+            current = await self.queue.current()
+            if current:
+                await self.play_track(current)
+
+        logger.info(f"Loaded {len(tracks)} tracks from playlist '{playlist_title}' into queue ({self.guild_str})")
         return tracks
 
     async def destroy(self):
